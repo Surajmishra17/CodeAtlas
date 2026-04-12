@@ -26,7 +26,7 @@ export async function fetchLeetCodeUserInfo(handle: string) {
             },
             body: JSON.stringify({
                 query: LEETCODE_GRAPHQL_QUERY,
-                variable: {username:handle}
+                variables: {username:handle}
             }),
             next: {revalidate:3600}
         })

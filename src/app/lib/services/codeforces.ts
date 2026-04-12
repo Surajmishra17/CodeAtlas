@@ -12,10 +12,33 @@ export async function fetchCodeforcesUserInfo(handle: string) {
 
         const user = data.result[0]
 
+        const statusResponse = await fetch(`https://codeforces.com/api/user.status?handle=${handle}`, {
+            next: { revalidate: 3600 }
+        });
+        const statusData = await statusResponse.json();
+
+        let totalSolved = 0;
+
+        if (statusData.status === 'OK') {
+            const submissions = statusData.result;
+
+            const solvedProblems = new Set<string>();
+
+            submissions.forEach((submission: any) => {
+                if (submission.verdict === 'OK') {
+                    const problemId = `${submission.problem.contestId}-${submission.problem.index}`;
+                    solvedProblems.add(problemId);
+                }
+            });
+
+            totalSolved = solvedProblems.size;
+        }
+
         return{
             success: true,
             platform: "codeforces",
             handle: user.handle,
+            totalSolved: totalSolved,
             rating: user.rating || 0,
             maxRating: user.maxRating || 0,
             rank: user.rank || "Unrated",
