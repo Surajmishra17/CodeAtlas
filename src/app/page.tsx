@@ -2,8 +2,6 @@ import Link from "next/link";
 
 export default function HomePage() {
   return (
-    // CHANGED: Replaced `overflow-hidden` with `overflow-x-hidden w-full relative` 
-    // to prevent horizontal scrolling but allow vertical scrolling.
     <div className="relative w-full min-h-screen overflow-x-hidden bg-zinc-50 dark:bg-black font-sans selection:bg-zinc-300 dark:selection:bg-zinc-700">
 
       {/* Abstract Background Glow (Top) */}
@@ -37,7 +35,7 @@ export default function HomePage() {
         <section className="max-w-7xl mx-auto px-6 pt-24 pb-20 flex flex-col items-center text-center">
           <div className="inline-flex items-center rounded-full border border-zinc-200 dark:border-zinc-800 bg-white/50 dark:bg-zinc-900/50 px-3 py-1 text-sm font-medium text-zinc-800 dark:text-zinc-200 backdrop-blur-sm mb-8">
             <span className="flex h-2 w-2 rounded-full bg-green-500 mr-2 animate-pulse"></span>
-            Now supporting LeetCode, Codeforces, CodeChef & GitHub
+            Now Supporting LeetCode, Codeforces, CodeChef, GFG, InterviewBit, AtCoder & GitHub
           </div>
 
           <h1 className="text-5xl md:text-7xl font-extrabold tracking-tight text-black dark:text-white max-w-4xl leading-tight mb-6">
@@ -104,7 +102,7 @@ export default function HomePage() {
                   <div className="absolute -top-3 right-4 bg-black dark:bg-white text-white dark:text-black text-[10px] px-2 py-0.5 rounded-full font-medium shadow-sm z-10">Daily consistency</div>
                   <div className="text-sm font-medium text-zinc-500 mb-3">Activity Heatmap</div>
                   <div className="flex gap-1 overflow-hidden">
-                    {Array.from({ length: 15 }).map((_, colIndex) => (
+                    {Array.from({ length: 30 }).map((_, colIndex) => (
                       <div key={colIndex} className="flex flex-col gap-1">
                         {Array.from({ length: 5 }).map((_, rowIndex) => {
                           const levels = ['bg-zinc-200 dark:bg-zinc-800', 'bg-green-200 dark:bg-green-900/50', 'bg-green-400 dark:bg-green-700/80', 'bg-green-500 dark:bg-green-500'];
@@ -184,7 +182,7 @@ export default function HomePage() {
             <div className="hidden md:block absolute top-12 left-[10%] right-[10%] h-[1px] bg-gradient-to-r from-transparent via-zinc-300 dark:via-zinc-700 to-transparent"></div>
 
             {[
-              { num: "01", title: "Connect Platforms", desc: "Link your GitHub, LeetCode, and Codeforces handles. No passwords required, just usernames." },
+              { num: "01", title: "Connect Platforms", desc: "Link your GitHub, LeetCode, Codeforces, CodeChef, GFG, InterviewBit, Atcoder handles." },
               { num: "02", title: "We Aggregate Data", desc: "Our engine fetches your latest submissions, ratings, and repositories securely in the background." },
               { num: "03", title: "View Insights", desc: "Access your unified dashboard, track your growth, and share your public developer portfolio." }
             ].map((step, i) => (

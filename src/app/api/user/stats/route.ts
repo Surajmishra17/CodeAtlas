@@ -9,6 +9,16 @@ import { fetchAtCoderUserInfo } from "@/app/lib/services/atcoder";
 import { fetchGFGUserInfo } from "@/app/lib/services/gfg";
 import { fetchInterviewBitUserInfo } from "@/app/lib/services/interviewbit";
 
+type CodingStats =
+    | Awaited<ReturnType<typeof fetchLeetCodeUserInfo>>
+    | Awaited<ReturnType<typeof fetchCodeChefUserInfo>>
+    | Awaited<ReturnType<typeof fetchCodeforcesUserInfo>>
+    | Awaited<ReturnType<typeof fetchAtCoderUserInfo>>
+    | Awaited<ReturnType<typeof fetchGFGUserInfo>>
+    | Awaited<ReturnType<typeof fetchInterviewBitUserInfo>>;
+
+type GitHubStats = Awaited<ReturnType<typeof fetchGitHubUserInfo>>;
+
 export async function GET(request: Request) {
     try {
         const supabase = await createClient()
@@ -40,8 +50,8 @@ export async function GET(request: Request) {
         }
 
         // process each handle using promise
-        const codingStats: any[] = []
-        let githubStats: any = null
+        const codingStats: CodingStats[] = []
+        let githubStats: GitHubStats | null = null
         let totalSolved = 0
 
         // an array of promises to fetch data simultaneously for speed 

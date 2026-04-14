@@ -1,3 +1,11 @@
+type CodeforcesStatusSubmission = {
+    verdict?: string;
+    problem: {
+        contestId: number;
+        index: string;
+    };
+}
+
 export async function fetchCodeforcesUserInfo(handle: string) {
     try {
         const response = await fetch(`https://codeforces.com/api/user.info?handles=${handle}`,{
@@ -24,7 +32,7 @@ export async function fetchCodeforcesUserInfo(handle: string) {
 
             const solvedProblems = new Set<string>();
 
-            submissions.forEach((submission: any) => {
+            (submissions as CodeforcesStatusSubmission[]).forEach((submission) => {
                 if (submission.verdict === 'OK') {
                     const problemId = `${submission.problem.contestId}-${submission.problem.index}`;
                     solvedProblems.add(problemId);

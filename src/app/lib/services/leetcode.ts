@@ -16,6 +16,11 @@ const LEETCODE_GRAPHQL_QUERY = `
   }
 `;
 
+type SubmissionCount = {
+    difficulty: "All" | "Easy" | "Medium" | "Hard";
+    count: number;
+}
+
 export async function fetchLeetCodeUserInfo(handle: string) {
     try {
         const response = await fetch("https://leetcode.com/graphql",{
@@ -38,12 +43,12 @@ export async function fetchLeetCodeUserInfo(handle: string) {
         }
 
         const userData = json.data.matchedUser
-        const submissions = userData.submitStatsGlobal.acSubmissionNum
+        const submissions = userData.submitStatsGlobal.acSubmissionNum as SubmissionCount[]
 
-        const totalSolved = submissions.find((s: any) => s.difficulty === "All")?.count || 0
-        const easySolved = submissions.find((s: any) => s.difficulty === "Easy")?.count || 0
-        const mediumSolved = submissions.find((s: any) => s.difficulty === "Medium")?.count || 0;
-        const hardSolved = submissions.find((s: any) => s.difficulty === "Hard")?.count || 0;
+        const totalSolved = submissions.find((s) => s.difficulty === "All")?.count || 0
+        const easySolved = submissions.find((s) => s.difficulty === "Easy")?.count || 0
+        const mediumSolved = submissions.find((s) => s.difficulty === "Medium")?.count || 0;
+        const hardSolved = submissions.find((s) => s.difficulty === "Hard")?.count || 0;
 
         return {
             success: true,

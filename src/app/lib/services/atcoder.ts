@@ -1,3 +1,7 @@
+type AtCoderHistoryEntry = {
+    NewRating: number;
+}
+
 export async function fetchAtCoderUserInfo(handle: string) {
     try {
         const response = await fetch(`https://atcoder.jp/users/${handle}/history/json`,{
@@ -11,7 +15,7 @@ export async function fetchAtCoderUserInfo(handle: string) {
             throw new Error(`AtCoder API error: ${response.statusText}`)
         }
 
-        const history = await response.json()
+        const history = (await response.json()) as AtCoderHistoryEntry[]
 
         //If the user exists but hasnot participated in any rated contests
 
@@ -30,7 +34,7 @@ export async function fetchAtCoderUserInfo(handle: string) {
         const currentRating = history[history.length - 1].NewRating
 
         // max rating across all contests
-        const maxRating = Math.max(...history.map((contest:any)=>contest.NewRating))
+        const maxRating = Math.max(...history.map((contest) => contest.NewRating))
 
         let rankName = "Unrated"
         if (currentRating >= 2800) rankName = "Red";
