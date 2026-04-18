@@ -37,7 +37,7 @@ export default function SignUpPage() {
       } else {
         setError(data.message || 'Signup failed');
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
@@ -54,9 +54,14 @@ export default function SignUpPage() {
       });
 
       if (error) throw error;
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Error in string to prevent react crash
-      const errorMessage = typeof err === 'string' ? err : err?.message || 'Failed to authenticate with Google.';
+      const errorMessage =
+        typeof err === 'string'
+          ? err
+          : err instanceof Error
+          ? err.message
+          : 'Failed to authenticate with Google.';
       setError(errorMessage);
     }
   };

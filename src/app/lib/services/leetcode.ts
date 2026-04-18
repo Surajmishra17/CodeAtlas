@@ -1,6 +1,7 @@
 const LEETCODE_GRAPHQL_QUERY = `
   query getUserStats($username: String!) {
     matchedUser(username: $username) {
+      submissionCalendar
       username
       profile {
         ranking
@@ -13,12 +14,38 @@ const LEETCODE_GRAPHQL_QUERY = `
         }
       }
     }
+    userContestRanking(username: $username) {
+      rating
+      topPercentage
+      badge {
+        name
+      }
+    }
+    userContestRankingHistory(username: $username) {
+      attended
+      rating
+      ranking
+      contest {
+        title
+        startTime
+      }
+    }
   }
 `;
 
 type SubmissionCount = {
     difficulty: "All" | "Easy" | "Medium" | "Hard";
     count: number;
+}
+
+type LeetCodeContestHistory = {
+    attended: boolean;
+    rating: number;
+    ranking: number;
+    contest: {
+        title: string;
+        startTime: number;
+    };
 }
 
 export async function fetchLeetCodeUserInfo(handle: string) {
@@ -50,6 +77,39 @@ export async function fetchLeetCodeUserInfo(handle: string) {
         const mediumSolved = submissions.find((s) => s.difficulty === "Medium")?.count || 0;
         const hardSolved = submissions.find((s) => s.difficulty === "Hard")?.count || 0;
 
+        const submissionCalendarRaw = userData.submissionCalendar as string | null;
+        let activity: Array<{ date: string; submissions: number }> = [];
+
+        if (submissionCalendarRaw) {
+            const parsed = JSON.parse(submissionCalendarRaw) as Record<string, number>;
+            activity = Object.entries(parsed).map(([timestamp, submissions]) => ({
+                date: new Date(Number(timestamp) * 1000).toISOString().slice(0, 10),
+                submissions: submissions || 0,
+            }));
+        }
+
+        const contestHistoryRaw = (json.data.userContestRankingHistory || []) as LeetCodeContestHistory[];
+        const contestHistory = contestHistoryRaw
+            .filter((item) => item.attended && item.contest?.startTime)
+            .map((item, index, arr) => {
+                const previous = arr[index - 1];
+                const previousRating = previous?.rating ?? null;
+
+                return {
+                    contestName: item.contest.title,
+                    rank: item.ranking || null,
+                    rating: Math.round(item.rating || 0),
+                    ratingChange:
+                        previousRating === null
+                            ? null
+                            : Math.round((item.rating || 0) - previousRating),
+                    date: new Date(item.contest.startTime * 1000).toISOString(),
+                };
+            });
+
+        const contestRating = Math.round(json.data.userContestRanking?.rating || 0);
+        const contestBadge = json.data.userContestRanking?.badge?.name || null;
+
         return {
             success: true,
             platform: "leetcode",
@@ -59,7 +119,11 @@ export async function fetchLeetCodeUserInfo(handle: string) {
             mediumSolved: mediumSolved,
             hardSolved: hardSolved,
             rank: userData.profile.ranking || 0,
-            avatar: userData.profile.userAvatar
+            avatar: userData.profile.userAvatar,
+            contestRating,
+            contestBadge,
+            contestHistory,
+            activity,
         }
     } catch (error) {
         console.error(`Error fetching LeetCode data for handle ${handle}:`, error);

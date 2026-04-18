@@ -1,6 +1,7 @@
 export async function fetchGFGUserInfo(handle: string) {
     try {
-        const response = await fetch(`https://geeks-for-geeks-api.vercel.app/${handle}`,{
+        const cleanHandle = handle.trim().replace(/:$/, "");
+        const response = await fetch(`https://geeks-for-geeks-api.vercel.app/${cleanHandle}`,{
             next: {revalidate: 3600}
         })
 
@@ -22,10 +23,11 @@ export async function fetchGFGUserInfo(handle: string) {
             hardSolved: info.hard || 0,
             score: info.codingScore || 0,
             institution: info.institution || null,
-            avatar: info.profilePicture || null
+            avatar: info.profilePicture || null,
+            rating: info.rating || 0
         }
     } catch (error) {
-        console.error(`Error fetching GFG data for handle '${handle}:', error`)
+        console.error(`Error fetching GFG data for handle '${handle}:'`, error)
         return{
             success: false,
             platform: "gfg",

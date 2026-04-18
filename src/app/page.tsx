@@ -1,9 +1,11 @@
 import Link from "next/link";
+import StarBackground from "@/components/StarBackground";
 
 export default function HomePage() {
   return (
     <div className="relative w-full min-h-screen overflow-x-hidden bg-zinc-50 dark:bg-black font-sans selection:bg-zinc-300 dark:selection:bg-zinc-700">
 
+      <StarBackground />
       {/* Abstract Background Glow (Top) */}
       <div className="absolute top-0 inset-x-0 h-[500px] pointer-events-none opacity-40 dark:opacity-20">
         <div className="absolute -top-[100px] -left-[10%] w-[120%] h-full bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-zinc-300 via-transparent to-transparent dark:from-zinc-800"></div>

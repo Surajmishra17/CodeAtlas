@@ -36,7 +36,7 @@ export default function SignInPage() {
       } else {
         setError(data.message || 'Invalid email or password');
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
@@ -53,9 +53,14 @@ export default function SignInPage() {
       });
 
       if (error) throw error;
-    } catch (err: any) {
+    } catch (err: unknown) {
       // FIX: Ensure the error is strictly a string to prevent React crashes
-      const errorMessage = typeof err === 'string' ? err : err?.message || 'Failed to authenticate with Google.';
+      const errorMessage =
+        typeof err === 'string'
+          ? err
+          : err instanceof Error
+          ? err.message
+          : 'Failed to authenticate with Google.';
       setError(errorMessage);
     }
   };
@@ -79,7 +84,7 @@ export default function SignInPage() {
             Unify your coding identity in one powerful dashboard.
           </h2>
           <p className="text-lg text-zinc-400">
-            "Code is like humor. When you have to explain it, it’s bad." — Cory House
+            &quot;Code is like humor. When you have to explain it, it&apos;s bad.&quot; - Cory House
           </p>
         </div>
       </div>
@@ -176,7 +181,7 @@ export default function SignInPage() {
             </form>
 
             <p className="mt-6 text-center text-sm text-zinc-600 dark:text-zinc-400">
-              Don't have an account?{' '}
+              Don&apos;t have an account?{' '}
               <Link href="/signup" className="font-semibold text-black dark:text-white hover:underline">
                 Sign up
               </Link>

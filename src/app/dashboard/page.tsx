@@ -1,11 +1,5 @@
-import React from 'react'
+import SalesDashboardDemo from "@/components/ui/demo";
 
-function page() {
-  return (
-    <div>
-      Under Construction
-    </div>
-  )
+export default function DashboardPage() {
+  return <SalesDashboardDemo />;
 }
-
-export default page

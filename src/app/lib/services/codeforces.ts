@@ -1,9 +1,19 @@
 type CodeforcesStatusSubmission = {
     verdict?: string;
+    creationTimeSeconds: number;
     problem: {
         contestId: number;
         index: string;
     };
+}
+
+export type CodeforcesRatingEntry = {
+    contestId: number;
+    contestName: string;
+    rank: number;
+    ratingUpdateTimeSeconds: number;
+    oldRating: number;
+    newRating: number;
 }
 
 export async function fetchCodeforcesUserInfo(handle: string) {
@@ -26,6 +36,7 @@ export async function fetchCodeforcesUserInfo(handle: string) {
         const statusData = await statusResponse.json();
 
         let totalSolved = 0;
+        const activityByDate = new Map<string, number>();
 
         if (statusData.status === 'OK') {
             const submissions = statusData.result;
@@ -33,6 +44,9 @@ export async function fetchCodeforcesUserInfo(handle: string) {
             const solvedProblems = new Set<string>();
 
             (submissions as CodeforcesStatusSubmission[]).forEach((submission) => {
+                const date = new Date(submission.creationTimeSeconds * 1000).toISOString().slice(0, 10);
+                activityByDate.set(date, (activityByDate.get(date) ?? 0) + 1);
+
                 if (submission.verdict === 'OK') {
                     const problemId = `${submission.problem.contestId}-${submission.problem.index}`;
                     solvedProblems.add(problemId);
@@ -42,6 +56,13 @@ export async function fetchCodeforcesUserInfo(handle: string) {
             totalSolved = solvedProblems.size;
         }
 
+        const ratingResponse = await fetch(`https://codeforces.com/api/user.rating?handle=${handle}`, {
+            next: { revalidate: 3600 }
+        });
+        const ratingData = await ratingResponse.json();
+
+        const history = ratingData.status === 'OK' ? ratingData.result as CodeforcesRatingEntry[] : [];
+
         return{
             success: true,
             platform: "codeforces",
@@ -50,7 +71,9 @@ export async function fetchCodeforcesUserInfo(handle: string) {
             rating: user.rating || 0,
             maxRating: user.maxRating || 0,
             rank: user.rank || "Unrated",
-            avatar: user.avatar
+            avatar: user.avatar,
+            history,
+            activity: [...activityByDate.entries()].map(([date, submissions]) => ({ date, submissions })),
         }
 
     } catch (error) {

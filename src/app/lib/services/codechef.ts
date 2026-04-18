@@ -30,6 +30,12 @@ export async function fetchCodeChefUserInfo(handle: string) {
         const maxRatingMatch = maxRatingStr.match(/\d+/);
         const maxRating = maxRatingMatch ? parseInt(maxRatingMatch[0]) : rating;
 
+        // Scrape total solved count
+        const solvedText = $('.rating-data-section.problems-solved h5').text();
+        // Format is usually "Fully Solved (123)" or "Problems Solved: 123"
+        const totalSolvedMatch = solvedText.match(/\d+/);
+        const totalSolved = totalSolvedMatch ? parseInt(totalSolvedMatch[0]) : 0;
+
         // Extracting star rating (e.g., "3 star")
         const stars = $('.rating-star').text().trim() || "Unrated";
 
@@ -42,8 +48,11 @@ export async function fetchCodeChefUserInfo(handle: string) {
             handle: handle,
             rating: rating,
             maxRating: maxRating,
+            totalSolved: totalSolved,
             stars: stars,
-            avatar: avatar || null
+            avatar: avatar || null,
+            contestHistory: [],
+            activity: [],
         };
     } catch (error) {
         console.error(`Error scraping CodeChef data for handle ${handle}:`, error);
