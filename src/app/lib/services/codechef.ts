@@ -1,5 +1,59 @@
 import * as cheerio from 'cheerio'
 
+function normalizeText(text: string): string {
+    return text.replace(/\s+/g, " ").trim();
+}
+
+function parseFullySolvedCount(text: string): number | null {
+    const normalizedText = normalizeText(text);
+    const fullySolvedMatch =
+        normalizedText.match(/fully\s+solved[^\d]*(\d+)/i) ??
+        normalizedText.match(/(\d+)[^\d]*fully\s+solved/i);
+
+    return fullySolvedMatch ? parseInt(fullySolvedMatch[1], 10) : null;
+}
+
+function parseTotalProblemsSolvedCount(text: string): number | null {
+    const normalizedText = normalizeText(text);
+    const totalProblemsSolvedMatch = normalizedText.match(/total\s+problems\s+solved[^\d]*(\d+)/i);
+
+    return totalProblemsSolvedMatch ? parseInt(totalProblemsSolvedMatch[1], 10) : null;
+}
+
+function parseFirstNumber(text: string): number | null {
+    const normalizedText = normalizeText(text);
+    const totalSolvedMatch = normalizedText.match(/\d+/);
+
+    return totalSolvedMatch ? parseInt(totalSolvedMatch[0], 10) : null;
+}
+
+function parseCodeChefSolvedCount($: cheerio.CheerioAPI): number {
+    const solvedSelectors = [
+        '.rating-data-section.problems-solved',
+        '.problems-solved',
+        '.rating-data-section:contains("Solved")',
+    ];
+
+    const bodyText = $('body').text();
+    const totalProblemsSolvedCount = parseTotalProblemsSolvedCount(bodyText);
+    if (totalProblemsSolvedCount !== null) return totalProblemsSolvedCount;
+
+    for (const selector of solvedSelectors) {
+        const fullySolvedCount = parseFullySolvedCount($(selector).text());
+        if (fullySolvedCount !== null) return fullySolvedCount;
+    }
+
+    const fullySolvedCount = parseFullySolvedCount(bodyText);
+    if (fullySolvedCount !== null) return fullySolvedCount;
+
+    for (const selector of solvedSelectors) {
+        const fallbackCount = parseFirstNumber($(selector).text());
+        if (fallbackCount !== null) return fallbackCount;
+    }
+
+    return 0;
+}
+
 export async function fetchCodeChefUserInfo(handle: string) {
     try {
         
@@ -30,11 +84,9 @@ export async function fetchCodeChefUserInfo(handle: string) {
         const maxRatingMatch = maxRatingStr.match(/\d+/);
         const maxRating = maxRatingMatch ? parseInt(maxRatingMatch[0]) : rating;
 
-        // Scrape total solved count
-        const solvedText = $('.rating-data-section.problems-solved h5').text();
-        // Format is usually "Fully Solved (123)" or "Problems Solved: 123"
-        const totalSolvedMatch = solvedText.match(/\d+/);
-        const totalSolved = totalSolvedMatch ? parseInt(totalSolvedMatch[0]) : 0;
+        // CodeChef includes both fully and partially solved counts on some profiles.
+        // The dashboard should count accepted problems, which maps to Fully Solved.
+        const totalSolved = parseCodeChefSolvedCount($);
 
         // Extracting star rating (e.g., "3 star")
         const stars = $('.rating-star').text().trim() || "Unrated";

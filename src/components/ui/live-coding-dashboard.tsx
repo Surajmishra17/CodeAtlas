@@ -76,6 +76,12 @@ type CodingPlatformStats = {
   rank?: string | number;
   stars?: string;
   score?: number;
+  monthlyScore?: number;
+  institution?: string | null;
+  articlesPublished?: number;
+  potdCurrentStreak?: number;
+  potdLongestStreak?: number;
+  potdSolved?: number;
   activity?: ActivityPoint[];
   contestHistory?: ContestHistoryPoint[];
   history?: ContestHistoryPoint[];
@@ -144,6 +150,7 @@ type DsaInsight = {
   medium: number;
   hard: number;
   total: number;
+  hasDifficultySplit: boolean;
 };
 
 type CompetitiveInsight = {
@@ -304,6 +311,10 @@ export const SalesDashboard: React.FC = () => {
 
   const githubStats = stats?.github?.success ? stats.github : null;
   const totalQuestions = stats?.totalSolved ?? 0;
+  const gfgStats = useMemo(
+    () => codingStats.find((entry) => entry.platform === "gfg") ?? null,
+    [codingStats],
+  );
 
   const activityByDay = useMemo(() => aggregateActivity(codingStats), [codingStats]);
   const totalActiveDays = useMemo(
@@ -394,7 +405,8 @@ export const SalesDashboard: React.FC = () => {
       const easy = platform.easySolved ?? 0;
       const medium = platform.mediumSolved ?? 0;
       const hard = platform.hardSolved ?? 0;
-      const total = easy + medium + hard;
+      const splitTotal = easy + medium + hard;
+      const total = splitTotal > 0 ? splitTotal : platform.totalSolved ?? 0;
       if (total <= 0) continue;
       rows.push({
         platform: formatPlatformName(platform.platform),
@@ -402,6 +414,7 @@ export const SalesDashboard: React.FC = () => {
         medium,
         hard,
         total,
+        hasDifficultySplit: splitTotal > 0,
       });
     }
     return rows;
@@ -532,11 +545,10 @@ export const SalesDashboard: React.FC = () => {
             <div className="space-y-7 px-4 py-6 text-[15px]">
               <div className="space-y-2">
                 <button
-                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${
-                    activeView === "dashboard"
+                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${activeView === "dashboard"
                       ? "border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/70 font-semibold text-zinc-900 dark:text-zinc-100"
                       : "text-zinc-600 dark:text-zinc-400 hover:bg-white/70 dark:hover:bg-zinc-900/60 hover:text-zinc-900 dark:hover:text-zinc-100"
-                  }`}
+                    }`}
                   onClick={() => setActiveView("dashboard")}
                 >
                   <BarChart3 className="h-4 w-4" />
@@ -560,11 +572,10 @@ export const SalesDashboard: React.FC = () => {
               <Separator className="bg-zinc-200 dark:bg-zinc-800" />
               <div className="space-y-2">
                 <button
-                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${
-                    activeView === "github"
+                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${activeView === "github"
                       ? "border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/70 font-semibold text-zinc-900 dark:text-zinc-100"
                       : "text-zinc-600 dark:text-zinc-400 hover:bg-white/70 dark:hover:bg-zinc-900/60 hover:text-zinc-900 dark:hover:text-zinc-100"
-                  }`}
+                    }`}
                   onClick={() => setActiveView("github")}
                 >
                   <FaGithub className="h-4 w-4" />
@@ -874,332 +885,360 @@ export const SalesDashboard: React.FC = () => {
                 )}
               </div>
             ) : (
-            <div className="space-y-5 px-4 py-5 md:px-6 md:py-6">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="text-sm text-zinc-500 dark:text-zinc-400">{relativeUpdateLabel}</span>
-                  
+              <div className="space-y-5 px-4 py-5 md:px-6 md:py-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-sm text-zinc-500 dark:text-zinc-400">{relativeUpdateLabel}</span>
+
+                  </div>
                 </div>
-              </div>
 
-              <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
-                <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 shadow-sm backdrop-blur-sm">
-                  <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-[15px] font-semibold text-zinc-700 dark:text-zinc-200">Total Questions</CardTitle>
-                    <BookOpenText className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-4xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">{totalQuestions.toLocaleString()}</p>
-                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Aggregated solved count</p>
-                  </CardContent>
-                </Card>
+                <section className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+                  <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 shadow-sm backdrop-blur-sm">
+                    <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-[15px] font-semibold text-zinc-700 dark:text-zinc-200">Total Questions</CardTitle>
+                      <BookOpenText className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-4xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">{totalQuestions.toLocaleString()}</p>
+                      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Aggregated solved count</p>
+                    </CardContent>
+                  </Card>
 
-                <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 shadow-sm backdrop-blur-sm">
-                  <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-[15px] font-semibold text-zinc-700 dark:text-zinc-200">Active Days</CardTitle>
-                    <CalendarDays className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-4xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">{totalActiveDays.toLocaleString()}</p>
-                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Days with submissions</p>
-                  </CardContent>
-                </Card>
-
-                <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 shadow-sm backdrop-blur-sm">
-                  <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-[15px] font-semibold text-zinc-700 dark:text-zinc-200">GitHub Repos</CardTitle>
-                    <FolderGit2 className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-4xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-                      {(githubStats?.publicRepos ?? 0).toLocaleString()}
-                    </p>
-                    <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{githubStats?.handle ?? "your account"}</p>
-                  </CardContent>
-                </Card>
-
-                <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 shadow-sm backdrop-blur-sm">
-                  <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-[15px] font-semibold text-zinc-700 dark:text-zinc-200">Last Active</CardTitle>
-                    <Clock3 className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex items-center gap-2 text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-                      <span className={`h-2.5 w-2.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-zinc-400"}`} />
-                      {lastActiveDate ? formatDatePretty(lastActiveDate) : "No activity"}
-                    </div>
-                  </CardContent>
-                </Card>
-              </section>
-
-              <section className="grid grid-cols-1 gap-4 xl:grid-cols-12">
-                <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 shadow-sm backdrop-blur-sm xl:col-span-8">
-                  <CardHeader className="space-y-3">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <CardTitle className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-                        <BarChart3 className="h-5 w-5 text-zinc-700 dark:text-zinc-300" />
-                        Platform Rating Trend
-                      </CardTitle>
-                      <div className="flex flex-wrap gap-2">
-                        {[...ratingByPlatform.keys()].map((key) => (
-                          <Button
-                            key={key}
-                            size="sm"
-                            variant={ratingPlatform === key ? "default" : "outline"}
-                            className={
-                              ratingPlatform === key
-                                ? "rounded-xl bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
-                                : "rounded-xl border-zinc-300 dark:border-zinc-700 bg-white/80 dark:bg-zinc-900/70 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                            }
-                            onClick={() => setRatingPlatform(key)}
-                          >
-                            {formatPlatformName(key)}
-                          </Button>
-                        ))}
-                      </div>
-                    </div>
-                    <CardDescription className="text-sm text-zinc-500 dark:text-zinc-400">
-                      Compare rating movement across platforms with available contest history.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {ratingByPlatform.size === 0 ? (
-                      <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                        No rating history available yet. Add handles and participate in rated contests.
+                  <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 shadow-sm backdrop-blur-sm">
+                    <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-[15px] font-semibold text-zinc-700 dark:text-zinc-200">GFG Score</CardTitle>
+                      <Code className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-4xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+                        {(gfgStats?.score ?? 0).toLocaleString()}
                       </p>
-                    ) : (
-                      <div className="h-[340px] w-full">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <LineChart data={ratingByPlatform.get(ratingPlatform) ?? []}>
-                            <CartesianGrid stroke="#d4d4d8" strokeDasharray="3 3" />
-                            <XAxis dataKey="label" minTickGap={20} stroke="#71717a" />
-                            <YAxis stroke="#71717a" />
-                            <RechartsTooltip />
-                            <Legend />
-                            <Line
-                              type="monotone"
-                              dataKey="rating"
-                              name={`${formatPlatformName(ratingPlatform)} Rating`}
-                              stroke="#1d4ed8"
-                              strokeWidth={2.5}
-                              dot={false}
-                            />
-                          </LineChart>
-                        </ResponsiveContainer>
+                      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                        {gfgStats ? `${(gfgStats.totalSolved ?? 0).toLocaleString()} solved on GFG` : "Connect GFG handle"}
+                      </p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 shadow-sm backdrop-blur-sm">
+                    <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-[15px] font-semibold text-zinc-700 dark:text-zinc-200">Active Days</CardTitle>
+                      <CalendarDays className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-4xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">{totalActiveDays.toLocaleString()}</p>
+                      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Days with submissions</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 shadow-sm backdrop-blur-sm">
+                    <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-[15px] font-semibold text-zinc-700 dark:text-zinc-200">GitHub Repos</CardTitle>
+                      <FolderGit2 className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-4xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+                        {(githubStats?.publicRepos ?? 0).toLocaleString()}
+                      </p>
+                      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{githubStats?.handle ?? "your account"}</p>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 shadow-sm backdrop-blur-sm">
+                    <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+                      <CardTitle className="text-[15px] font-semibold text-zinc-700 dark:text-zinc-200">Last Active</CardTitle>
+                      <Clock3 className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-2 text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+                        <span className={`h-2.5 w-2.5 rounded-full ${isActive ? "bg-emerald-500" : "bg-zinc-400"}`} />
+                        {lastActiveDate ? formatDatePretty(lastActiveDate) : "No activity"}
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </section>
 
-                <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 shadow-sm backdrop-blur-sm xl:col-span-4">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-                      <TrendingUp className="h-5 w-5 text-zinc-700 dark:text-zinc-300" />
-                      Performance
-                    </CardTitle>
-                    <CardDescription className="text-sm text-zinc-500 dark:text-zinc-400">
-                      Competitive profile snapshot from connected handles.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {competitiveInsights.length === 0 ? (
-                      <p className="text-sm text-zinc-500 dark:text-zinc-400">No competitive data available yet.</p>
-                    ) : (
-                      competitiveInsights.map((item) => {
-                        const cappedRating = Math.min(Math.max(item.currentRating ?? 0, 0), 4000);
-                        const progress = (cappedRating / 4000) * 100;
-                        return (
-                          <div key={item.platform} className="space-y-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/40 p-3">
-                            <div className="flex items-center justify-between">
-                              <p className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{item.platform}</p>
-                              <Badge variant="outline" className="border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200">
-                                {item.rankLabel}
-                              </Badge>
-                            </div>
-                            <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
-                              <span>Current {item.currentRating ?? "N/A"}</span>
-                              <span>Max {item.maxRating ?? "N/A"}</span>
-                            </div>
-                            <div className="h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
-                              <div className="h-full rounded-full bg-emerald-500" style={{ width: `${progress}%` }} />
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
-                  </CardContent>
-                </Card>
-              </section>
-
-              <section className="grid grid-cols-1 gap-4 xl:grid-cols-12">
-                <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 shadow-sm backdrop-blur-sm xl:col-span-7">
-                  <CardHeader>
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <div>
-                        <CardTitle className="flex items-center gap-2 text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
-                          <GitCompareArrows className="h-5 w-5 text-zinc-700 dark:text-zinc-300" />
-                          Submission Heatmap
+                <section className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+                  <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 shadow-sm backdrop-blur-sm xl:col-span-8">
+                    <CardHeader className="space-y-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <CardTitle className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+                          <BarChart3 className="h-5 w-5 text-zinc-700 dark:text-zinc-300" />
+                          Platform Rating Trend
                         </CardTitle>
-                        <CardDescription className="text-sm text-zinc-500 dark:text-zinc-400">
-                          6-month submissions window ({heatmapRangeLabel}).
-                        </CardDescription>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {heatmapPage > 0 && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="rounded-xl border-zinc-300 dark:border-zinc-700 bg-white/80 dark:bg-zinc-900/70 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                            onClick={() => setHeatmapPage((prev) => Math.max(0, prev - 1))}
-                          >
-                            Newer
-                          </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled={!canShowOlderHeatmap}
-                          className="rounded-xl border-zinc-300 dark:border-zinc-700 bg-white/80 dark:bg-zinc-900/70 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                          onClick={() => setHeatmapPage((prev) => prev + 1)}
-                        >
-                          Older
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <ScrollArea className="w-full">
-                      <div className="min-w-[980px] pb-2">
-                        <div className="flex gap-1">
-                          {heatmapWeeks.map((week, weekIndex) => (
-                            <div key={`week-${weekIndex}`} className="flex flex-col gap-1">
-                              {week.map((day) => (
-                                <Tooltip key={day.date}>
-                                  <TooltipTrigger asChild>
-                                    <div className={`h-3.5 w-3.5 rounded-full ${getHeatColorLevel(day.submissions)}`} />
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p className="text-xs">
-                                      {formatDatePretty(day.date)}: {day.submissions} submissions
-                                    </p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              ))}
-                            </div>
+                        <div className="flex flex-wrap gap-2">
+                          {[...ratingByPlatform.keys()].map((key) => (
+                            <Button
+                              key={key}
+                              size="sm"
+                              variant={ratingPlatform === key ? "default" : "outline"}
+                              className={
+                                ratingPlatform === key
+                                  ? "rounded-xl bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+                                  : "rounded-xl border-zinc-300 dark:border-zinc-700 bg-white/80 dark:bg-zinc-900/70 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                              }
+                              onClick={() => setRatingPlatform(key)}
+                            >
+                              {formatPlatformName(key)}
+                            </Button>
                           ))}
                         </div>
                       </div>
-                    </ScrollArea>
-                    <Separator className="my-4 bg-zinc-200 dark:bg-zinc-800" />
-                    <div className="flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
-                      <span>Less</span>
-                      <div className="h-3 w-3 rounded-full bg-zinc-200 dark:bg-zinc-800" />
-                      <div className="h-3 w-3 rounded-full bg-green-200" />
-                      <div className="h-3 w-3 rounded-full bg-green-400" />
-                      <div className="h-3 w-3 rounded-full bg-green-500" />
-                      <span>More</span>
-                    </div>
-                  </CardContent>
-                </Card>
+                      <CardDescription className="text-sm text-zinc-500 dark:text-zinc-400">
+                        Compare rating movement across platforms with available contest history.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      {ratingByPlatform.size === 0 ? (
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                          No rating history available yet. Add handles and participate in rated contests.
+                        </p>
+                      ) : (
+                        <div className="h-[340px] w-full">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={ratingByPlatform.get(ratingPlatform) ?? []}>
+                              <CartesianGrid stroke="#d4d4d8" strokeDasharray="3 3" />
+                              <XAxis dataKey="label" minTickGap={20} stroke="#71717a" />
+                              <YAxis stroke="#71717a" />
+                              <RechartsTooltip />
+                              <Legend />
+                              <Line
+                                type="monotone"
+                                dataKey="rating"
+                                name={`${formatPlatformName(ratingPlatform)} Rating`}
+                                stroke="#1d4ed8"
+                                strokeWidth={2.5}
+                                dot={false}
+                              />
+                            </LineChart>
+                          </ResponsiveContainer>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
 
-                <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 shadow-sm backdrop-blur-sm xl:col-span-5">
-                  <CardHeader className="space-y-3">
-                    <CardTitle className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Profile Insights</CardTitle>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant={topicMode === "dsa" ? "default" : "outline"}
-                        className={
-                          topicMode === "dsa"
-                            ? "rounded-xl bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
-                            : "rounded-xl border-zinc-300 dark:border-zinc-700 bg-white/80 dark:bg-zinc-900/70 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                        }
-                        onClick={() => setTopicMode("dsa")}
-                      >
-                        DSA
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant={topicMode === "competitive" ? "default" : "outline"}
-                        className={
-                          topicMode === "competitive"
-                            ? "rounded-xl bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
-                            : "rounded-xl border-zinc-300 dark:border-zinc-700 bg-white/80 dark:bg-zinc-900/70 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                        }
-                        onClick={() => setTopicMode("competitive")}
-                      >
-                        Competitive
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <ScrollArea className="h-[280px] pr-3">
-                      <div className="space-y-2">
-                        {topicMode === "dsa" ? (
-                          dsaInsights.length === 0 ? (
-                            <p className="text-sm text-zinc-500 dark:text-zinc-400">No DSA topic split data found yet for LeetCode/GFG.</p>
-                          ) : (
-                            dsaInsights.map((item) => {
-                              const easyDeg = (item.easy / item.total) * 360;
-                              const mediumDeg = (item.medium / item.total) * 360;
-                              const easyEnd = easyDeg;
-                              const mediumEnd = easyDeg + mediumDeg;
-
-                              return (
-                                <div key={item.platform} className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/40 px-3 py-3">
-                                  <div className="flex items-center justify-between">
-                                    <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{item.platform}</p>
-                                    <Badge variant="secondary" className="border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200">
-                                      {item.total} solved
-                                    </Badge>
-                                  </div>
-
-                                  <div className="mt-3 flex items-center gap-3">
-                                    <div
-                                      className="relative h-16 w-16 rounded-full"
-                                      style={{
-                                        background: `conic-gradient(#22c55e 0deg ${easyEnd}deg, #f59e0b ${easyEnd}deg ${mediumEnd}deg, #ef4444 ${mediumEnd}deg 360deg)`,
-                                      }}
-                                    >
-                                      <div className="absolute inset-[9px] grid place-items-center rounded-full bg-white dark:bg-zinc-900 text-[10px] font-semibold text-zinc-700 dark:text-zinc-200">
-                                        DSA
-                                      </div>
-                                    </div>
-                                    <div className="grid flex-1 grid-cols-3 gap-2 text-center">
-                                      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 p-1.5">
-                                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Easy</p>
-                                        <p className="text-sm font-semibold text-emerald-600">{item.easy}</p>
-                                      </div>
-                                      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 p-1.5">
-                                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Medium</p>
-                                        <p className="text-sm font-semibold text-amber-600">{item.medium}</p>
-                                      </div>
-                                      <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 p-1.5">
-                                        <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Hard</p>
-                                        <p className="text-sm font-semibold text-rose-600">{item.hard}</p>
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-                              );
-                            })
-                          )
-                        ) : competitiveInsights.length === 0 ? (
-                          <p className="text-sm text-zinc-500 dark:text-zinc-400">Competitive topic-wise breakdown is not available from current APIs.</p>
-                        ) : (
-                          competitiveInsights.map((item) => (
-                            <div key={item.platform} className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/40 px-3 py-2.5 text-sm text-zinc-700 dark:text-zinc-200">
-                              <p className="font-semibold text-zinc-900 dark:text-zinc-100">{item.platform}</p>
-                              <p className="text-xs text-zinc-500 dark:text-zinc-400">Solved {item.totalSolved} | Rank {item.rankLabel}</p>
+                  <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 shadow-sm backdrop-blur-sm xl:col-span-4">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+                        <TrendingUp className="h-5 w-5 text-zinc-700 dark:text-zinc-300" />
+                        Performance
+                      </CardTitle>
+                      <CardDescription className="text-sm text-zinc-500 dark:text-zinc-400">
+                        Competitive profile snapshot from connected handles.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {competitiveInsights.length === 0 ? (
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400">No competitive data available yet.</p>
+                      ) : (
+                        competitiveInsights.map((item) => {
+                          const cappedRating = Math.min(Math.max(item.currentRating ?? 0, 0), 4000);
+                          const progress = (cappedRating / 4000) * 100;
+                          return (
+                            <div key={item.platform} className="space-y-2 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/40 p-3">
+                              <div className="flex items-center justify-between">
+                                <p className="text-base font-semibold text-zinc-900 dark:text-zinc-100">{item.platform}</p>
+                                <Badge variant="outline" className="border-zinc-300 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200">
+                                  {item.rankLabel}
+                                </Badge>
+                              </div>
+                              <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
+                                <span>Current {item.currentRating ?? "N/A"}</span>
+                                <span>Max {item.maxRating ?? "N/A"}</span>
+                              </div>
+                              <div className="h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
+                                <div className="h-full rounded-full bg-emerald-500" style={{ width: `${progress}%` }} />
+                              </div>
                             </div>
-                          ))
-                        )}
+                          );
+                        })
+                      )}
+                    </CardContent>
+                  </Card>
+                </section>
+
+                <section className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+                  <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 shadow-sm backdrop-blur-sm xl:col-span-7">
+                    <CardHeader>
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <div>
+                          <CardTitle className="flex items-center gap-2 text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+                            <GitCompareArrows className="h-5 w-5 text-zinc-700 dark:text-zinc-300" />
+                            Submission Heatmap
+                          </CardTitle>
+                          <CardDescription className="text-sm text-zinc-500 dark:text-zinc-400">
+                            6-month submissions window ({heatmapRangeLabel}).
+                          </CardDescription>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {heatmapPage > 0 && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="rounded-xl border-zinc-300 dark:border-zinc-700 bg-white/80 dark:bg-zinc-900/70 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                              onClick={() => setHeatmapPage((prev) => Math.max(0, prev - 1))}
+                            >
+                              Newer
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={!canShowOlderHeatmap}
+                            className="rounded-xl border-zinc-300 dark:border-zinc-700 bg-white/80 dark:bg-zinc-900/70 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                            onClick={() => setHeatmapPage((prev) => prev + 1)}
+                          >
+                            Older
+                          </Button>
+                        </div>
                       </div>
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-              </section>
-            </div>
+                    </CardHeader>
+                    <CardContent>
+                      <ScrollArea className="w-full">
+                        <div className="min-w-[980px] pb-2">
+                          <div className="flex gap-1">
+                            {heatmapWeeks.map((week, weekIndex) => (
+                              <div key={`week-${weekIndex}`} className="flex flex-col gap-1">
+                                {week.map((day) => (
+                                  <Tooltip key={day.date}>
+                                    <TooltipTrigger asChild>
+                                      <div className={`h-3.5 w-3.5 rounded-full ${getHeatColorLevel(day.submissions)}`} />
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p className="text-xs">
+                                        {formatDatePretty(day.date)}: {day.submissions} submissions
+                                      </p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                ))}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </ScrollArea>
+                      <Separator className="my-4 bg-zinc-200 dark:bg-zinc-800" />
+                      <div className="flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
+                        <span>Less</span>
+                        <div className="h-3 w-3 rounded-full bg-zinc-200 dark:bg-zinc-800" />
+                        <div className="h-3 w-3 rounded-full bg-green-200" />
+                        <div className="h-3 w-3 rounded-full bg-green-400" />
+                        <div className="h-3 w-3 rounded-full bg-green-500" />
+                        <span>More</span>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 shadow-sm backdrop-blur-sm xl:col-span-5">
+                    <CardHeader className="space-y-3">
+                      <CardTitle className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Profile Insights</CardTitle>
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant={topicMode === "dsa" ? "default" : "outline"}
+                          className={
+                            topicMode === "dsa"
+                              ? "rounded-xl bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+                              : "rounded-xl border-zinc-300 dark:border-zinc-700 bg-white/80 dark:bg-zinc-900/70 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                          }
+                          onClick={() => setTopicMode("dsa")}
+                        >
+                          DSA
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant={topicMode === "competitive" ? "default" : "outline"}
+                          className={
+                            topicMode === "competitive"
+                              ? "rounded-xl bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+                              : "rounded-xl border-zinc-300 dark:border-zinc-700 bg-white/80 dark:bg-zinc-900/70 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                          }
+                          onClick={() => setTopicMode("competitive")}
+                        >
+                          Competitive
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-0">
+                      <ScrollArea className="h-[280px] pr-3">
+                        <div className="space-y-2">
+                          {topicMode === "dsa" ? (
+                            dsaInsights.length === 0 ? (
+                              <p className="text-sm text-zinc-500 dark:text-zinc-400">No DSA topic split data found yet for LeetCode/GFG.</p>
+                            ) : (
+                              dsaInsights.map((item) => {
+                                const easyDeg = (item.easy / item.total) * 360;
+                                const mediumDeg = (item.medium / item.total) * 360;
+                                const easyEnd = easyDeg;
+                                const mediumEnd = easyDeg + mediumDeg;
+
+                                return (
+                                  <div key={item.platform} className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/40 px-3 py-3">
+                                    <div className="flex items-center justify-between">
+                                      <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{item.platform}</p>
+                                      <Badge variant="secondary" className="border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200">
+                                        {item.total} solved
+                                      </Badge>
+                                    </div>
+
+                                    <div className="mt-3 flex items-center gap-3">
+                                      {item.hasDifficultySplit ? (
+                                        <div
+                                          className="relative h-16 w-16 rounded-full"
+                                          style={{
+                                            background: `conic-gradient(#22c55e 0deg ${easyEnd}deg, #f59e0b ${easyEnd}deg ${mediumEnd}deg, #ef4444 ${mediumEnd}deg 360deg)`,
+                                          }}
+                                        >
+                                          <div className="absolute inset-[9px] grid place-items-center rounded-full bg-white dark:bg-zinc-900 text-[10px] font-semibold text-zinc-700 dark:text-zinc-200">
+                                            DSA
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="grid h-16 w-16 place-items-center rounded-full border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 text-xs font-semibold text-zinc-700 dark:text-zinc-200">
+                                          Total
+                                        </div>
+                                      )}
+                                      {item.hasDifficultySplit ? (
+                                        <div className="grid flex-1 grid-cols-3 gap-2 text-center">
+                                          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 p-1.5">
+                                            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Easy</p>
+                                            <p className="text-sm font-semibold text-emerald-600">{item.easy}</p>
+                                          </div>
+                                          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 p-1.5">
+                                            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Medium</p>
+                                            <p className="text-sm font-semibold text-amber-600">{item.medium}</p>
+                                          </div>
+                                          <div className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 p-1.5">
+                                            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Hard</p>
+                                            <p className="text-sm font-semibold text-rose-600">{item.hard}</p>
+                                          </div>
+                                        </div>
+                                      ) : (
+                                        <div className="flex-1 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 p-3">
+                                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Difficulty split unavailable</p>
+                                          <p className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{item.total.toLocaleString()} solved</p>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )
+                          ) : competitiveInsights.length === 0 ? (
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400">Competitive topic-wise breakdown is not available from current APIs.</p>
+                          ) : (
+                            competitiveInsights.map((item) => (
+                              <div key={item.platform} className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/40 px-3 py-2.5 text-sm text-zinc-700 dark:text-zinc-200">
+                                <p className="font-semibold text-zinc-900 dark:text-zinc-100">{item.platform}</p>
+                                <p className="text-xs text-zinc-500 dark:text-zinc-400">Solved {item.totalSolved} | Rank {item.rankLabel}</p>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </ScrollArea>
+                    </CardContent>
+                  </Card>
+                </section>
+              </div>
             )}
           </main>
         </div>
