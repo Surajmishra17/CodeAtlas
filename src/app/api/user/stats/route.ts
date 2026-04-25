@@ -76,6 +76,7 @@ export async function GET(request: Request) {
                 else if (platform_name === "codechef") {
                     const data = await fetchCodeChefUserInfo(handle);
                     if (data.success) {
+                        totalSolved += data.totalSolved || 0;
                         codingStats.push(data);
                     }
                 }
