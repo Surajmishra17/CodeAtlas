@@ -23,7 +23,6 @@ import {
   GitCompareArrows,
   Home,
   LayoutGrid,
-  Layers,
   Loader2,
   LogOut,
   Search,
@@ -31,6 +30,13 @@ import {
   TrendingUp,
   UserRoundCog,
   Code,
+  Building2,
+  ExternalLink,
+  GitFork,
+  Link as LinkIcon,
+  MapPin,
+  Star,
+  Users,
 } from "lucide-react";
 
 import { FaGithub } from "react-icons/fa";
@@ -78,10 +84,43 @@ type CodingPlatformStats = {
 type GitHubStats = {
   success: boolean;
   handle?: string;
+  name?: string | null;
+  bio?: string | null;
+  company?: string | null;
+  location?: string | null;
+  blog?: string | null;
   publicRepos?: number;
+  publicGists?: number;
   followers?: number;
   following?: number;
+  avatar?: string;
   profileUrl?: string;
+  createdAt?: string;
+  totalStars?: number;
+  totalForks?: number;
+  topLanguages?: Array<{
+    language: string;
+    count: number;
+  }>;
+  recentRepos?: Array<{
+    name: string;
+    description?: string | null;
+    url: string;
+    language?: string | null;
+    stars: number;
+    forks: number;
+    updatedAt?: string;
+  }>;
+  contributionCalendar?: {
+    totalContributions: number;
+    weeks: Array<{
+      contributionDays: Array<{
+        date: string;
+        contributionCount: number;
+        color?: string;
+      }>;
+    }>;
+  } | null;
 };
 
 type AggregatedStatsApi = {
@@ -151,6 +190,16 @@ function formatRelativeUpdate(dateText: string | null): string {
   return `Last update ${days} days ago`;
 }
 
+function formatMonthYear(dateText?: string): string {
+  if (!dateText) return "Unknown";
+  const date = new Date(dateText);
+  if (Number.isNaN(date.getTime())) return "Unknown";
+  return date.toLocaleDateString(undefined, {
+    month: "short",
+    year: "numeric",
+  });
+}
+
 function aggregateActivity(codingStats: CodingPlatformStats[]): Map<string, number> {
   const map = new Map<string, number>();
   for (const stat of codingStats) {
@@ -198,6 +247,14 @@ function getHeatColorLevel(submissions: number): string {
   return "bg-green-500 dark:bg-green-500";
 }
 
+function getGithubHeatColorLevel(contributions: number): string {
+  if (contributions <= 0) return "bg-zinc-200 dark:bg-zinc-800";
+  if (contributions <= 2) return "bg-emerald-200 dark:bg-emerald-950";
+  if (contributions <= 5) return "bg-emerald-400 dark:bg-emerald-800";
+  if (contributions <= 10) return "bg-emerald-600 dark:bg-emerald-600";
+  return "bg-emerald-700 dark:bg-emerald-500";
+}
+
 export const SalesDashboard: React.FC = () => {
   const router = useRouter();
   const supabase = createClient();
@@ -208,6 +265,7 @@ export const SalesDashboard: React.FC = () => {
   const [ratingPlatform, setRatingPlatform] = useState<string>("leetcode");
   const [topicMode, setTopicMode] = useState<"dsa" | "competitive">("dsa");
   const [heatmapPage, setHeatmapPage] = useState(0);
+  const [activeView, setActiveView] = useState<"dashboard" | "github">("dashboard");
 
   useEffect(() => {
     let alive = true;
@@ -447,6 +505,7 @@ export const SalesDashboard: React.FC = () => {
   }
 
   const relativeUpdateLabel = formatRelativeUpdate(lastActiveDate);
+  const githubProfileUrl = githubStats?.profileUrl ?? (githubStats?.handle ? `https://github.com/${githubStats.handle}` : null);
 
   return (
     <TooltipProvider>
@@ -472,7 +531,14 @@ export const SalesDashboard: React.FC = () => {
 
             <div className="space-y-7 px-4 py-6 text-[15px]">
               <div className="space-y-2">
-                <button className="flex w-full items-center gap-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/70 px-3 py-2.5 text-left font-semibold text-zinc-900 dark:text-zinc-100">
+                <button
+                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${
+                    activeView === "dashboard"
+                      ? "border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/70 font-semibold text-zinc-900 dark:text-zinc-100"
+                      : "text-zinc-600 dark:text-zinc-400 hover:bg-white/70 dark:hover:bg-zinc-900/60 hover:text-zinc-900 dark:hover:text-zinc-100"
+                  }`}
+                  onClick={() => setActiveView("dashboard")}
+                >
                   <BarChart3 className="h-4 w-4" />
                   Dashboard
                 </button>
@@ -493,10 +559,17 @@ export const SalesDashboard: React.FC = () => {
               </div>
               <Separator className="bg-zinc-200 dark:bg-zinc-800" />
               <div className="space-y-2">
-                <div className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-zinc-500 dark:text-zinc-400">
+                <button
+                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition ${
+                    activeView === "github"
+                      ? "border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/70 font-semibold text-zinc-900 dark:text-zinc-100"
+                      : "text-zinc-600 dark:text-zinc-400 hover:bg-white/70 dark:hover:bg-zinc-900/60 hover:text-zinc-900 dark:hover:text-zinc-100"
+                  }`}
+                  onClick={() => setActiveView("github")}
+                >
                   <FaGithub className="h-4 w-4" />
-                  Github
-                </div>
+                  GitHub
+                </button>
                 <div className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-zinc-500 dark:text-zinc-400">
                   <BookOpenText className="h-4 w-4" />
                   Documentation
@@ -518,7 +591,9 @@ export const SalesDashboard: React.FC = () => {
           <main className="min-w-0 flex-1 bg-white/15 dark:bg-zinc-950/10">
             <div className="border-b border-zinc-200/80 dark:border-zinc-800/80 px-4 py-4 md:px-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h1 className="text-4xl font-semibold tracking-tight text-black dark:text-white">Dashboard</h1>
+                <h1 className="text-4xl font-semibold tracking-tight text-black dark:text-white">
+                  {activeView === "github" ? "GitHub Dashboard" : "Dashboard"}
+                </h1>
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
                     size="icon"
@@ -546,6 +621,259 @@ export const SalesDashboard: React.FC = () => {
               </div>
             </div>
 
+            {activeView === "github" ? (
+              <div className="space-y-5 px-4 py-5 md:px-6 md:py-6">
+                {!githubStats ? (
+                  <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 shadow-sm backdrop-blur-sm">
+                    <CardHeader>
+                      <CardTitle className="flex items-center gap-2 text-zinc-900 dark:text-zinc-100">
+                        <FaGithub className="h-5 w-5" />
+                        GitHub profile is not connected
+                      </CardTitle>
+                      <CardDescription className="text-zinc-500 dark:text-zinc-400">
+                        Add your GitHub username in Manage Links to show profile, repositories, followers, languages, stars, and forks here.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardFooter>
+                      <Button
+                        className="gap-2 rounded-xl bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+                        onClick={() => router.push("/dashboard/links")}
+                      >
+                        <UserRoundCog className="h-4 w-4" />
+                        Manage Links
+                      </Button>
+                    </CardFooter>
+                  </Card>
+                ) : (
+                  <>
+                    <section className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+                      <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 shadow-sm backdrop-blur-sm xl:col-span-5">
+                        <CardContent className="p-5">
+                          <div className="flex flex-col gap-5 sm:flex-row xl:flex-col">
+                            <div
+                              className="h-28 w-28 shrink-0 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-cover bg-center shadow-sm"
+                              style={{ backgroundImage: githubStats.avatar ? `url(${githubStats.avatar})` : undefined }}
+                            />
+                            <div className="min-w-0 flex-1 space-y-4">
+                              <div>
+                                <h2 className="truncate text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+                                  {githubStats.name || githubStats.handle}
+                                </h2>
+                                <p className="text-base text-zinc-500 dark:text-zinc-400">@{githubStats.handle}</p>
+                              </div>
+                              {githubStats.bio ? (
+                                <p className="text-sm leading-6 text-zinc-700 dark:text-zinc-300">{githubStats.bio}</p>
+                              ) : null}
+                              <div className="space-y-2 text-sm text-zinc-600 dark:text-zinc-400">
+                                {githubStats.company ? (
+                                  <div className="flex items-center gap-2">
+                                    <Building2 className="h-4 w-4" />
+                                    <span>{githubStats.company}</span>
+                                  </div>
+                                ) : null}
+                                {githubStats.location ? (
+                                  <div className="flex items-center gap-2">
+                                    <MapPin className="h-4 w-4" />
+                                    <span>{githubStats.location}</span>
+                                  </div>
+                                ) : null}
+                                {githubStats.blog ? (
+                                  <div className="flex items-center gap-2">
+                                    <LinkIcon className="h-4 w-4" />
+                                    <a className="truncate hover:text-zinc-900 dark:hover:text-zinc-100" href={githubStats.blog.startsWith("http") ? githubStats.blog : `https://${githubStats.blog}`} target="_blank" rel="noreferrer">
+                                      {githubStats.blog}
+                                    </a>
+                                  </div>
+                                ) : null}
+                              </div>
+                              <div className="flex flex-wrap gap-2">
+                                {githubProfileUrl ? (
+                                  <Button
+                                    variant="outline"
+                                    className="gap-2 rounded-xl border-zinc-300 dark:border-zinc-700 bg-white/80 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                                    onClick={() => window.open(githubProfileUrl, "_blank", "noopener,noreferrer")}
+                                  >
+                                    <ExternalLink className="h-4 w-4" />
+                                    Open Profile
+                                  </Button>
+                                ) : null}
+                                <Badge variant="secondary" className="border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200">
+                                  Joined {formatMonthYear(githubStats.createdAt)}
+                                </Badge>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <div className="grid grid-cols-2 gap-3 xl:col-span-7">
+                        {[
+                          { label: "Repositories", value: githubStats.publicRepos ?? 0, icon: FolderGit2 },
+                          { label: "Followers", value: githubStats.followers ?? 0, icon: Users },
+                          { label: "Following", value: githubStats.following ?? 0, icon: UserRoundCog },
+                          { label: "Stars", value: githubStats.totalStars ?? 0, icon: Star },
+                          { label: "Forks", value: githubStats.totalForks ?? 0, icon: GitFork },
+                          { label: "Gists", value: githubStats.publicGists ?? 0, icon: Code },
+                        ].map((item) => {
+                          const Icon = item.icon;
+                          return (
+                            <Card key={item.label} className="rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 shadow-sm backdrop-blur-sm">
+                              <CardHeader className="flex-row items-center justify-between space-y-0 pb-2">
+                                <CardTitle className="text-[15px] font-semibold text-zinc-700 dark:text-zinc-200">{item.label}</CardTitle>
+                                <Icon className="h-4 w-4 text-zinc-500 dark:text-zinc-400" />
+                              </CardHeader>
+                              <CardContent>
+                                <p className="text-4xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">{item.value.toLocaleString()}</p>
+                              </CardContent>
+                            </Card>
+                          );
+                        })}
+                      </div>
+                    </section>
+
+                    <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 shadow-sm backdrop-blur-sm">
+                      <CardHeader>
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div>
+                            <CardTitle className="flex items-center gap-2 text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+                              <GitCompareArrows className="h-5 w-5 text-zinc-700 dark:text-zinc-300" />
+                              GitHub Contribution Heatmap
+                            </CardTitle>
+                            <CardDescription className="text-sm text-zinc-500 dark:text-zinc-400">
+                              {githubStats.contributionCalendar
+                                ? `${githubStats.contributionCalendar.totalContributions.toLocaleString()} contributions in the last year.`
+                                : "Contribution calendar needs a server-side GitHub token."}
+                            </CardDescription>
+                          </div>
+                          {githubStats.contributionCalendar ? (
+                            <Badge variant="secondary" className="border border-zinc-300 dark:border-zinc-700 bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200">
+                              Last 12 months
+                            </Badge>
+                          ) : null}
+                        </div>
+                      </CardHeader>
+                      <CardContent>
+                        {githubStats.contributionCalendar ? (
+                          <>
+                            <ScrollArea className="w-full">
+                              <div className="min-w-[760px] pb-2">
+                                <div className="flex gap-1">
+                                  {githubStats.contributionCalendar.weeks.map((week, weekIndex) => (
+                                    <div key={`github-week-${weekIndex}`} className="flex flex-col gap-1">
+                                      {week.contributionDays.map((day) => (
+                                        <Tooltip key={day.date}>
+                                          <TooltipTrigger asChild>
+                                            <div
+                                              className={`h-3.5 w-3.5 rounded-sm ${getGithubHeatColorLevel(day.contributionCount)}`}
+                                            />
+                                          </TooltipTrigger>
+                                          <TooltipContent>
+                                            <p className="text-xs">
+                                              {formatDatePretty(day.date)}: {day.contributionCount} contributions
+                                            </p>
+                                          </TooltipContent>
+                                        </Tooltip>
+                                      ))}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            </ScrollArea>
+                            <Separator className="my-4 bg-zinc-200 dark:bg-zinc-800" />
+                            <div className="flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
+                              <span>Less</span>
+                              <div className="h-3 w-3 rounded-sm bg-zinc-200 dark:bg-zinc-800" />
+                              <div className="h-3 w-3 rounded-sm bg-emerald-200 dark:bg-emerald-950" />
+                              <div className="h-3 w-3 rounded-sm bg-emerald-400 dark:bg-emerald-800" />
+                              <div className="h-3 w-3 rounded-sm bg-emerald-600" />
+                              <div className="h-3 w-3 rounded-sm bg-emerald-700 dark:bg-emerald-500" />
+                              <span>More</span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/40 p-4 text-sm text-zinc-600 dark:text-zinc-400">
+                            Add `GITHUB_TOKEN` to the server environment to load the real GitHub contribution calendar.
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    <section className="grid grid-cols-1 gap-4 xl:grid-cols-12">
+                      <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 shadow-sm backdrop-blur-sm xl:col-span-8">
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2 text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">
+                            <FolderGit2 className="h-5 w-5 text-zinc-700 dark:text-zinc-300" />
+                            Recent Repositories
+                          </CardTitle>
+                          <CardDescription className="text-sm text-zinc-500 dark:text-zinc-400">
+                            Public repositories sorted by latest update.
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          {(githubStats.recentRepos ?? []).length === 0 ? (
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400">No public repositories found.</p>
+                          ) : (
+                            githubStats.recentRepos?.map((repo) => (
+                              <a
+                                key={repo.name}
+                                href={repo.url}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="block rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white/60 dark:bg-zinc-900/40 px-4 py-3 transition hover:bg-white dark:hover:bg-zinc-900"
+                              >
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <p className="font-semibold text-zinc-900 dark:text-zinc-100">{repo.name}</p>
+                                  <div className="flex items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
+                                    <span className="flex items-center gap-1"><Star className="h-3.5 w-3.5" />{repo.stars}</span>
+                                    <span className="flex items-center gap-1"><GitFork className="h-3.5 w-3.5" />{repo.forks}</span>
+                                  </div>
+                                </div>
+                                {repo.description ? (
+                                  <p className="mt-1 line-clamp-2 text-sm text-zinc-600 dark:text-zinc-400">{repo.description}</p>
+                                ) : null}
+                                <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-zinc-500 dark:text-zinc-400">
+                                  {repo.language ? <span>{repo.language}</span> : null}
+                                  <span>Updated {formatDatePretty(repo.updatedAt ?? "")}</span>
+                                </div>
+                              </a>
+                            ))
+                          )}
+                        </CardContent>
+                      </Card>
+
+                      <Card className="rounded-2xl border-zinc-200 dark:border-zinc-800 bg-white/70 dark:bg-zinc-900/60 shadow-sm backdrop-blur-sm xl:col-span-4">
+                        <CardHeader>
+                          <CardTitle className="text-xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Top Languages</CardTitle>
+                          <CardDescription className="text-sm text-zinc-500 dark:text-zinc-400">
+                            Based on public repository primary language.
+                          </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                          {(githubStats.topLanguages ?? []).length === 0 ? (
+                            <p className="text-sm text-zinc-500 dark:text-zinc-400">No language data available.</p>
+                          ) : (
+                            githubStats.topLanguages?.map((item) => {
+                              const maxCount = Math.max(...(githubStats.topLanguages ?? []).map((entry) => entry.count), 1);
+                              return (
+                                <div key={item.language} className="space-y-1.5">
+                                  <div className="flex items-center justify-between text-sm">
+                                    <span className="font-medium text-zinc-800 dark:text-zinc-200">{item.language}</span>
+                                    <span className="text-zinc-500 dark:text-zinc-400">{item.count}</span>
+                                  </div>
+                                  <div className="h-2 overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
+                                    <div className="h-full rounded-full bg-emerald-500" style={{ width: `${(item.count / maxCount) * 100}%` }} />
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </CardContent>
+                      </Card>
+                    </section>
+                  </>
+                )}
+              </div>
+            ) : (
             <div className="space-y-5 px-4 py-5 md:px-6 md:py-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex flex-wrap items-center gap-2">
@@ -872,6 +1200,7 @@ export const SalesDashboard: React.FC = () => {
                 </Card>
               </section>
             </div>
+            )}
           </main>
         </div>
       </div>
