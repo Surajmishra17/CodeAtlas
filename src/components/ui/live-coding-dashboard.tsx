@@ -25,10 +25,12 @@ import {
   LayoutGrid,
   Loader2,
   LogOut,
+  Menu,
   Search,
   Share2,
   TrendingUp,
   UserRoundCog,
+  X,
   Code,
   Building2,
   ExternalLink,
@@ -273,6 +275,7 @@ export const SalesDashboard: React.FC = () => {
   const [topicMode, setTopicMode] = useState<"dsa" | "competitive">("dsa");
   const [heatmapPage, setHeatmapPage] = useState(0);
   const [activeView, setActiveView] = useState<"dashboard" | "github">("dashboard");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     let alive = true;
@@ -529,8 +532,16 @@ export const SalesDashboard: React.FC = () => {
         </div>
 
         <div className="relative z-10 mx-auto flex w-full max-w-[1450px] overflow-hidden rounded-[26px] border border-zinc-200/80 dark:border-zinc-800/80 bg-white/55 dark:bg-zinc-900/55 backdrop-blur-xl shadow-[0_30px_80px_rgba(15,23,42,0.16)]">
-          <aside className="hidden w-[270px] shrink-0 border-r border-zinc-200/80 dark:border-zinc-800/80 bg-white/35 dark:bg-zinc-950/30 lg:flex lg:flex-col">
-            <div className="border-b border-zinc-200/80 dark:border-zinc-800/80 px-5 py-6">
+          {/* Mobile Sidebar Overlay */}
+          {isSidebarOpen && (
+            <div
+              className="fixed inset-0 z-40 bg-zinc-900/50 backdrop-blur-sm lg:hidden"
+              onClick={() => setIsSidebarOpen(false)}
+            />
+          )}
+
+          <aside className={`absolute inset-y-0 left-0 z-50 flex w-[270px] flex-col border-r border-zinc-200/80 bg-white dark:border-zinc-800/80 dark:bg-zinc-950 transition-transform duration-300 lg:static lg:bg-white/35 lg:dark:bg-zinc-950/30 lg:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"}`}>
+            <div className="border-b border-zinc-200/80 dark:border-zinc-800/80 px-5 py-6 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div className="grid h-10 w-10 place-items-center rounded-xl bg-zinc-900 text-white">
                   <LayoutGrid className="h-5 w-5" />
@@ -540,6 +551,14 @@ export const SalesDashboard: React.FC = () => {
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">Unified coding analytics</p>
                 </div>
               </div>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden"
+                onClick={() => setIsSidebarOpen(false)}
+              >
+                <X className="h-5 w-5" />
+              </Button>
             </div>
 
             <div className="space-y-7 px-4 py-6 text-[15px]">
@@ -549,21 +568,30 @@ export const SalesDashboard: React.FC = () => {
                       ? "border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/70 font-semibold text-zinc-900 dark:text-zinc-100"
                       : "text-zinc-600 dark:text-zinc-400 hover:bg-white/70 dark:hover:bg-zinc-900/60 hover:text-zinc-900 dark:hover:text-zinc-100"
                     }`}
-                  onClick={() => setActiveView("dashboard")}
+                  onClick={() => {
+                    setActiveView("dashboard");
+                    setIsSidebarOpen(false);
+                  }}
                 >
                   <BarChart3 className="h-4 w-4" />
                   Dashboard
                 </button>
                 <button
                   className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-zinc-600 dark:text-zinc-400 transition hover:bg-white/70 dark:hover:bg-zinc-900/60 hover:text-zinc-900 dark:hover:text-zinc-100"
-                  onClick={() => router.push("/dashboard/links")}
+                  onClick={() => {
+                    router.push("/dashboard/links");
+                    setIsSidebarOpen(false);
+                  }}
                 >
                   <UserRoundCog className="h-4 w-4" />
                   Manage Links
                 </button>
                 <button
                   className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-zinc-600 dark:text-zinc-400 transition hover:bg-white/70 dark:hover:bg-zinc-900/60 hover:text-zinc-900 dark:hover:text-zinc-100"
-                  onClick={() => router.push("/")}
+                  onClick={() => {
+                    router.push("/");
+                    setIsSidebarOpen(false);
+                  }}
                 >
                   <Home className="h-4 w-4" />
                   Back To Home
@@ -576,7 +604,10 @@ export const SalesDashboard: React.FC = () => {
                       ? "border border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/70 font-semibold text-zinc-900 dark:text-zinc-100"
                       : "text-zinc-600 dark:text-zinc-400 hover:bg-white/70 dark:hover:bg-zinc-900/60 hover:text-zinc-900 dark:hover:text-zinc-100"
                     }`}
-                  onClick={() => setActiveView("github")}
+                  onClick={() => {
+                    setActiveView("github");
+                    setIsSidebarOpen(false);
+                  }}
                 >
                   <FaGithub className="h-4 w-4" />
                   GitHub
@@ -602,9 +633,19 @@ export const SalesDashboard: React.FC = () => {
           <main className="min-w-0 flex-1 bg-white/15 dark:bg-zinc-950/10">
             <div className="border-b border-zinc-200/80 dark:border-zinc-800/80 px-4 py-4 md:px-6">
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <h1 className="text-4xl font-semibold tracking-tight text-black dark:text-white">
-                  {activeView === "github" ? "GitHub Dashboard" : "Dashboard"}
-                </h1>
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="lg:hidden"
+                    onClick={() => setIsSidebarOpen(true)}
+                  >
+                    <Menu className="h-5 w-5" />
+                  </Button>
+                  <h1 className="text-2xl md:text-4xl font-semibold tracking-tight text-black dark:text-white">
+                    {activeView === "github" ? "GitHub Dashboard" : "Dashboard"}
+                  </h1>
+                </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Button
                     size="icon"
