@@ -359,17 +359,48 @@ const handleDownloadCard = async () => {
   link.click();
 };
 
+// const handleNativeShare = async () => {
+//   const card = document.getElementById("profile-card");
+//   if (!card) return;
+
+//   const blob = await htmlToImage.toBlob(card);
+
+//   if (navigator.canShare && blob) {
+//     navigator.share({
+//       files: [new File([blob], "profile-card.png", { type: "image/png" })],
+//       title: "My Coding Profile",
+//     });
+//   } else {
+//     alert("Sharing not supported on this device.");
+//   }
+// };
+
 const handleNativeShare = async () => {
   const card = document.getElementById("profile-card");
   if (!card) return;
 
   const blob = await htmlToImage.toBlob(card);
+  
+  // Guard clause to ensure blob was successfully created
+  if (!blob) {
+    console.error("Failed to generate image blob.");
+    return;
+  }
 
-  if (navigator.canShare && blob) {
-    navigator.share({
-      files: [new File([blob], "profile-card.png", { type: "image/png" })],
-      title: "My Coding Profile",
-    });
+  const shareData = {
+    files: [new File([blob], "profile-card.png", { type: "image/png" })],
+    title: "My Coding Profile",
+  };
+
+  // 1. Check if the method exists on the navigator object
+  // 2. Call the method with the data to see if the browser supports sharing it
+  if ('canShare' in navigator && navigator.canShare(shareData)) {
+    try {
+      await navigator.share(shareData);
+    } catch (error) {
+      // Handle cases where the user cancels the share dialog
+      console.error("Error sharing or share cancelled:", error);
+    }
   } else {
     alert("Sharing not supported on this device.");
   }
