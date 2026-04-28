@@ -774,7 +774,7 @@ const handleNativeShare = async () => {
 
             <div className="mt-auto border-t border-zinc-200/80 dark:border-zinc-800/80 p-4">
               <Button
-                className="w-full justify-start gap-2 rounded-xl bg-black text-white hover:bg-zinc-800 dark:bg-red-500 dark:text-black dark:hover:bg-red-200 active:scale-97"
+                className="w-full justify-start gap-2 rounded-xl bg-black text-white hover:bg-zinc-800 dark:bg-red-500 dark:text-white dark:hover:bg-red-200 active:scale-97"
                 onClick={handleLogout}
               >
                 <LogOut className="h-4 w-4" />
