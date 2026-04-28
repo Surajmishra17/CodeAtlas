@@ -647,7 +647,7 @@ export const SalesDashboard: React.FC = () => {
                   </h1>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Button
+                  {/* <Button
                     size="icon"
                     variant="outline"
                     className="rounded-xl border-zinc-300 dark:border-zinc-700 bg-white/80 dark:bg-zinc-900/70 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"
@@ -668,7 +668,14 @@ export const SalesDashboard: React.FC = () => {
                   >
                     <Share2 className="h-4 w-4" />
                     Share
-                  </Button>
+                  </Button> */}
+                  <Button
+                className="w-full justify-start gap-2 rounded-xl bg-black text-white hover:bg-zinc-800 dark:bg-red-500 dark:text-black dark:hover:bg-red-200 hover:scale-95 transition-transform"
+                onClick={handleLogout}
+              >
+                <LogOut className="h-4 w-4" />
+                Logout
+              </Button>
                 </div>
               </div>
             </div>

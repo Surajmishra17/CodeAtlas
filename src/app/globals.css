@@ -80,3 +80,12 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
+
+body::-webkit-scrollbar{
+  width: 8px;
+  height: 8px;
+}
+
+button{
+  cursor: pointer;
+}
