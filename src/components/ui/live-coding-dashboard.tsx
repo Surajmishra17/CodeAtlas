@@ -50,6 +50,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Button } from "@/components/ui/button";
+import * as htmlToImage from "html-to-image";
 
 type ActivityPoint = {
   date: string;
@@ -163,6 +164,9 @@ type CompetitiveInsight = {
   totalSolved: number;
 };
 
+
+
+
 const platformLabels: Record<string, string> = {
   leetcode: "LeetCode",
   codeforces: "Codeforces",
@@ -174,6 +178,30 @@ const platformLabels: Record<string, string> = {
 
 function formatPlatformName(platform: string): string {
   return platformLabels[platform] ?? platform.charAt(0).toUpperCase() + platform.slice(1);
+}
+
+function getPlatformProfileUrl(platform: string, handle?: string): string | null {
+  if (!handle) return null;
+  const encodedHandle = encodeURIComponent(handle);
+
+  switch (platform) {
+    case "leetcode":
+      return `https://leetcode.com/u/${encodedHandle}`;
+    case "codeforces":
+      return `https://codeforces.com/profile/${encodedHandle}`;
+    case "codechef":
+      return `https://www.codechef.com/users/${encodedHandle}`;
+    case "atcoder":
+      return `https://atcoder.jp/users/${encodedHandle}`;
+    case "gfg":
+      return `https://www.geeksforgeeks.org/profile/${encodedHandle}`;
+    case "interviewbit":
+      return `https://www.interviewbit.com/profile/${encodedHandle}`;
+    case "github":
+      return `https://github.com/${encodedHandle}`;
+    default:
+      return null;
+  }
 }
 
 function formatDatePretty(dateText: string): string {
@@ -221,32 +249,72 @@ function aggregateActivity(codingStats: CodingPlatformStats[]): Map<string, numb
   return map;
 }
 
-function buildHeatmapWeeksByRange(
+type HeatmapDay = {
+  date: string;
+  submissions: number;
+};
+
+type HeatmapMonth = {
+  key: string;
+  label: string;
+  weeks: Array<Array<HeatmapDay | null>>;
+};
+
+function buildHeatmapMonthsByRange(
   activityByDay: Map<string, number>,
   start: Date,
   end: Date,
-) {
+): HeatmapMonth[] {
   const normalizedStart = new Date(start);
   normalizedStart.setHours(0, 0, 0, 0);
   const normalizedEnd = new Date(end);
-  end.setHours(0, 0, 0, 0);
   normalizedEnd.setHours(0, 0, 0, 0);
 
-  const flat: Array<{ date: string; submissions: number }> = [];
-  const dayCount =
-    Math.floor((normalizedEnd.getTime() - normalizedStart.getTime()) / (24 * 60 * 60 * 1000)) + 1;
-  for (let i = 0; i < dayCount; i += 1) {
-    const day = new Date(normalizedStart);
-    day.setDate(normalizedStart.getDate() + i);
-    const key = day.toISOString().slice(0, 10);
-    flat.push({ date: key, submissions: activityByDay.get(key) ?? 0 });
+  const months: HeatmapMonth[] = [];
+  const cursor = new Date(normalizedStart.getFullYear(), normalizedStart.getMonth(), 1);
+
+  while (cursor.getTime() <= normalizedEnd.getTime()) {
+    const monthStart = new Date(cursor);
+    const monthEnd = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 0);
+    const visibleStart = monthStart.getTime() < normalizedStart.getTime() ? normalizedStart : monthStart;
+    const visibleEnd = monthEnd.getTime() > normalizedEnd.getTime() ? normalizedEnd : monthEnd;
+    const weeks: Array<Array<HeatmapDay | null>> = [];
+    let week: Array<HeatmapDay | null> = [];
+
+    for (let i = 0; i < visibleStart.getDay(); i += 1) {
+      week.push(null);
+    }
+
+    const day = new Date(visibleStart);
+    while (day.getTime() <= visibleEnd.getTime()) {
+      const key = day.toISOString().slice(0, 10);
+      week.push({ date: key, submissions: activityByDay.get(key) ?? 0 });
+
+      if (week.length === 7) {
+        weeks.push(week);
+        week = [];
+      }
+
+      day.setDate(day.getDate() + 1);
+    }
+
+    if (week.length > 0) {
+      while (week.length < 7) {
+        week.push(null);
+      }
+      weeks.push(week);
+    }
+
+    months.push({
+      key: `${cursor.getFullYear()}-${cursor.getMonth()}`,
+      label: cursor.toLocaleDateString(undefined, { month: "short" }),
+      weeks,
+    });
+
+    cursor.setMonth(cursor.getMonth() + 1);
   }
 
-  const weeks: Array<Array<{ date: string; submissions: number }>> = [];
-  for (let i = 0; i < flat.length; i += 7) {
-    weeks.push(flat.slice(i, i + 7));
-  }
-  return weeks;
+  return months;
 }
 
 function getHeatColorLevel(submissions: number): string {
@@ -276,6 +344,36 @@ export const SalesDashboard: React.FC = () => {
   const [heatmapPage, setHeatmapPage] = useState(0);
   const [activeView, setActiveView] = useState<"dashboard" | "github">("dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const [showProfileCard, setShowProfileCard] = useState(false);
+
+
+const handleDownloadCard = async () => {
+  const card = document.getElementById("profile-card");
+  if (!card) return;
+
+  const dataUrl = await htmlToImage.toPng(card);
+  const link = document.createElement("a");
+  link.download = "profile-card.png";
+  link.href = dataUrl;
+  link.click();
+};
+
+const handleNativeShare = async () => {
+  const card = document.getElementById("profile-card");
+  if (!card) return;
+
+  const blob = await htmlToImage.toBlob(card);
+
+  if (navigator.canShare && blob) {
+    navigator.share({
+      files: [new File([blob], "profile-card.png", { type: "image/png" })],
+      title: "My Coding Profile",
+    });
+  } else {
+    alert("Sharing not supported on this device.");
+  }
+};
 
   useEffect(() => {
     let alive = true;
@@ -314,6 +412,30 @@ export const SalesDashboard: React.FC = () => {
 
   const githubStats = stats?.github?.success ? stats.github : null;
   const totalQuestions = stats?.totalSolved ?? 0;
+  const profileLinks = useMemo(() => {
+    const links = codingStats
+      .map((entry) => ({
+        platform: entry.platform,
+        label: formatPlatformName(entry.platform),
+        handle: entry.handle,
+        url: getPlatformProfileUrl(entry.platform, entry.handle),
+      }))
+      .filter((entry): entry is { platform: string; label: string; handle: string; url: string } =>
+        Boolean(entry.handle && entry.url),
+      );
+
+    if (githubStats?.handle) {
+      links.unshift({
+        platform: "github",
+        label: "GitHub",
+        handle: githubStats.handle,
+        url: githubStats.profileUrl ?? `https://github.com/${encodeURIComponent(githubStats.handle)}`,
+      });
+    }
+
+    return links;
+  }, [codingStats, githubStats]);
+
   const gfgStats = useMemo(
     () => codingStats.find((entry) => entry.platform === "gfg") ?? null,
     [codingStats],
@@ -457,8 +579,8 @@ export const SalesDashboard: React.FC = () => {
     return { start, end };
   }, [heatmapPage]);
 
-  const heatmapWeeks = useMemo(
-    () => buildHeatmapWeeksByRange(activityByDay, heatmapRange.start, heatmapRange.end),
+  const heatmapMonths = useMemo(
+    () => buildHeatmapMonthsByRange(activityByDay, heatmapRange.start, heatmapRange.end),
     [activityByDay, heatmapRange],
   );
 
@@ -621,7 +743,7 @@ export const SalesDashboard: React.FC = () => {
 
             <div className="mt-auto border-t border-zinc-200/80 dark:border-zinc-800/80 p-4">
               <Button
-                className="w-full justify-start gap-2 rounded-xl bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
+                className="w-full justify-start gap-2 rounded-xl bg-black text-white hover:bg-zinc-800 dark:bg-red-500 dark:text-black dark:hover:bg-red-200 active:scale-97"
                 onClick={handleLogout}
               >
                 <LogOut className="h-4 w-4" />
@@ -661,21 +783,17 @@ export const SalesDashboard: React.FC = () => {
                       placeholder="Search something"
                       className="w-full bg-transparent text-sm text-zinc-700 dark:text-zinc-200 outline-none placeholder:text-zinc-400 dark:placeholder:text-zinc-500"
                     />
-                  </div>
+                  </div>*/}
                   <Button
                     variant="outline"
                     className="gap-2 rounded-xl border-zinc-300 dark:border-zinc-700 bg-white/80 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                    onClick={() => setShowProfileCard(true)}
                   >
                     <Share2 className="h-4 w-4" />
                     Share
-                  </Button> */}
-                  <Button
-                className="w-full justify-start gap-2 rounded-xl bg-black text-white hover:bg-zinc-800 dark:bg-red-500 dark:text-black dark:hover:bg-red-200 hover:scale-95 transition-transform"
-                onClick={handleLogout}
-              >
-                <LogOut className="h-4 w-4" />
-                Logout
-              </Button>
+                  </Button>
+
+                  
                 </div>
               </div>
             </div>
@@ -1124,7 +1242,7 @@ export const SalesDashboard: React.FC = () => {
                               size="sm"
                               variant="outline"
                               className="rounded-xl border-zinc-300 dark:border-zinc-700 bg-white/80 dark:bg-zinc-900/70 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                              onClick={() => setHeatmapPage((prev) => Math.max(0, prev - 1))}
+                              onClick={() => setHeatmapPage(0)}
                             >
                               Newer
                             </Button>
@@ -1143,22 +1261,38 @@ export const SalesDashboard: React.FC = () => {
                     </CardHeader>
                     <CardContent>
                       <ScrollArea className="w-full">
-                        <div className="min-w-[980px] pb-2">
-                          <div className="flex gap-1">
-                            {heatmapWeeks.map((week, weekIndex) => (
-                              <div key={`week-${weekIndex}`} className="flex flex-col gap-1">
-                                {week.map((day) => (
-                                  <Tooltip key={day.date}>
-                                    <TooltipTrigger asChild>
-                                      <div className={`h-3.5 w-3.5 rounded-full ${getHeatColorLevel(day.submissions)}`} />
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                      <p className="text-xs">
-                                        {formatDatePretty(day.date)}: {day.submissions} submissions
-                                      </p>
-                                    </TooltipContent>
-                                  </Tooltip>
-                                ))}
+                        <div className="min-w-[680px] pb-3">
+                          <div className="flex items-end gap-4">
+                            {heatmapMonths.map((month) => (
+                              <div key={month.key} className="space-y-2">
+                                <div className="flex gap-1">
+                                  {month.weeks.map((week, weekIndex) => (
+                                    <div key={`${month.key}-week-${weekIndex}`} className="flex flex-col gap-1">
+                                      {week.map((day, dayIndex) =>
+                                        day ? (
+                                          <Tooltip key={day.date}>
+                                            <TooltipTrigger asChild>
+                                              <div className={`h-3.5 w-3.5 rounded-[3px] ${getHeatColorLevel(day.submissions)}`} />
+                                            </TooltipTrigger>
+                                            <TooltipContent>
+                                              <p className="text-xs">
+                                                {formatDatePretty(day.date)}: {day.submissions} submissions
+                                              </p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        ) : (
+                                          <div
+                                            key={`${month.key}-empty-${weekIndex}-${dayIndex}`}
+                                            className="h-3.5 w-3.5 rounded-[3px] opacity-0"
+                                          />
+                                        ),
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                                <p className="text-center text-sm font-medium text-zinc-500 dark:text-zinc-400">
+                                  {month.label}
+                                </p>
                               </div>
                             ))}
                           </div>
@@ -1207,7 +1341,7 @@ export const SalesDashboard: React.FC = () => {
                       </div>
                     </CardHeader>
                     <CardContent className="pt-0">
-                      <ScrollArea className="h-[280px] pr-3">
+                      <ScrollArea className="h-[250px] pr-3">
                         <div className="space-y-2">
                           {topicMode === "dsa" ? (
                             dsaInsights.length === 0 ? (
@@ -1291,6 +1425,113 @@ export const SalesDashboard: React.FC = () => {
           </main>
         </div>
       </div>
+
+            {showProfileCard && (
+              <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+                
+                <div
+                  id="profile-card"
+                  className="relative w-[350px] rounded-2xl bg-[#111] text-white p-6 h-full overflow-auto shadow-2xl border border-zinc-700"
+                >
+                  {/* Close Button */}
+                  <button
+                    className="absolute top-3 right-3 bg-white/10 p-2 rounded-full hover:bg-white/20"
+                    onClick={() => setShowProfileCard(false)}
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+
+                  {/* Avatar */}
+                  <div className="flex justify-center">
+                    <div className="h-25 w-25 rounded-full overflow-hidden border-4 border-amber-400">
+                      <img
+                        src={githubStats?.avatar || "/placeholder.png"}
+                        alt="avatar"
+                        className="h-full w-full object-cover"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Name & Username */}
+                  <div className="mt-4 text-center">
+                    <p className="text-xl font-semibold">{githubStats?.name || "User"}</p>
+                    <p className="text-zinc-400">@{githubStats?.handle}</p>
+                  </div>
+
+                  {/* Stats section */}
+                  <div className="mt-6 grid grid-cols-2 gap-3 text-center">
+                    <div className="bg-white/10 rounded-xl py-4">
+                      <p className="text-sm text-zinc-400">Questions Solved</p>
+                      <p className="text-3xl font-bold">{totalQuestions}</p>
+                    </div>
+
+                    <div className="bg-white/10 rounded-xl py-4">
+                      <p className="text-sm text-zinc-400">Active Days</p>
+                      <p className="text-3xl font-bold">{totalActiveDays}</p>
+                    </div>
+                  </div>
+
+                  {/* Platforms */}
+                  <div className="mt-4 bg-white/10 rounded-xl p-2 text-center text-sm">
+                    <p className="text-zinc-400 mb-3">Profile links</p>
+                    <div className="space-y-2 flex flex-wrap text-left">
+                      {profileLinks.length > 0 ? (
+                        profileLinks.map((link) => (
+                          <a
+                            key={`${link.platform}-${link.handle}`}
+                            href={link.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex w-1/2 items-center justify-between gap-3 rounded-lg border border-white/10 bg-black/25 px-3 py-2 text-zinc-100 transition hover:border-white/25 hover:bg-white/10"
+                          >
+                            <span className="min-w-0">
+                              <span className="block text-sm font-semibold">{link.label}</span>
+                              <span className="block truncate text-xs text-zinc-400">@{link.handle}</span>
+                            </span>
+                            <ExternalLink className="h-4 w-4 shrink-0 text-zinc-400" />
+                          </a>
+                        ))
+                      ) : (
+                        <p className="text-center text-xs text-zinc-500">
+                          Add platform handles to show profile links.
+                        </p>
+                      )}
+                    </div>
+                    <div className="hidden">
+                      {codingStats.map((p) => (
+                        <span key={p.platform} title={formatPlatformName(p.platform)}>
+                          {p.platform === "leetcode" && "🟧"}
+                          {p.platform === "codeforces" && "🔵"}
+                          {p.platform === "gfg" && "🟢"}
+                          {p.platform === "codechef" && "⚪"}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Buttons */}
+                  <div className="mt-6 flex justify-between">
+                    <Button
+                      variant="secondary"
+                      className="bg-white/20 text-white hover:bg-white/30"
+                      onClick={handleDownloadCard}
+                    >
+                      Download
+                    </Button>
+
+                    <Button
+                      variant="secondary"
+                      className="bg-white/20 text-white hover:bg-white/30"
+                      onClick={handleNativeShare}
+                    >
+                      Share
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+
     </TooltipProvider>
   );
 };
