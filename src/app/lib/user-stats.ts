@@ -29,6 +29,10 @@ export type PublicUserProfile = {
   id: string;
   username: string;
   email?: string | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  college?: string | null;
+  about?: string | null;
 };
 
 export type AggregatedUserStats = {
@@ -65,7 +69,7 @@ export const getUserProfileByUserId = cache(async (userId: string): Promise<Publ
   const supabaseAdmin = getSupabaseAdmin();
   const { data, error } = await supabaseAdmin
     .from("users")
-    .select("id, username, email")
+    .select("id, username, email, first_name, last_name, college, about")
     .eq("id", userId)
     .single();
 
@@ -80,7 +84,7 @@ export const getUserProfileByUsername = cache(async (username: string): Promise<
   const supabaseAdmin = getSupabaseAdmin();
   const { data, error } = await supabaseAdmin
     .from("users")
-    .select("id, username, email")
+    .select("id, username, email, first_name, last_name, college, about")
     .eq("username", normalizedUsername)
     .single();
 

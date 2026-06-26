@@ -189,7 +189,7 @@ export default function DashboardLinksPage() {
                   </div>
                   <div className="flex flex-col md:flex-row gap-2">
                     <input
-                      className="h-10 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-black px-3 text-sm focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white flex-1"
+                      className="h-10 rounded-md border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-black px-3 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-black dark:focus:ring-white flex-1"
                       placeholder={`Enter your ${platform} username`}
                       value={handles[platform]}
                       onChange={(e) =>

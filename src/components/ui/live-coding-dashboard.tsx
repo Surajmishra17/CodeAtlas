@@ -39,6 +39,10 @@ import {
   MapPin,
   Star,
   Users,
+  Calendar,
+  UserRound,
+  ChevronDown,
+  Settings,
 } from "lucide-react";
 
 import { FaGithub } from "react-icons/fa";
@@ -144,6 +148,10 @@ type AggregatedStatsApi = {
       id: string;
       username: string;
       email?: string | null;
+      first_name?: string | null;
+      last_name?: string | null;
+      college?: string | null;
+      about?: string | null;
     } | null;
   };
 };
@@ -466,45 +474,118 @@ export const CodingDashboard: React.FC<CodingDashboardProps> = ({
   const [ratingPlatform, setRatingPlatform] = useState<string>("leetcode");
   const [topicMode, setTopicMode] = useState<"dsa" | "competitive">("dsa");
   const [heatmapPage, setHeatmapPage] = useState(0);
-  const [activeView, setActiveView] = useState<"dashboard" | "github">("dashboard");
+  const [activeView, setActiveView] = useState<"dashboard" | "github" | "calender">("dashboard");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showProfileCard, setShowProfileCard] = useState(false);
   const [copiedProfileUrl, setCopiedProfileUrl] = useState(false);
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+
+  // Dropdown click outside handler
+  useEffect(() => {
+    if (!isProfileDropdownOpen) return;
+    const handleOutsideClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest("#profile-dropdown-container")) {
+        setIsProfileDropdownOpen(false);
+      }
+    };
+    window.addEventListener("click", handleOutsideClick);
+    return () => window.removeEventListener("click", handleOutsideClick);
+  }, [isProfileDropdownOpen]);
+
+  // Initialise theme from sessionStorage or system preference
+  useEffect(() => {
+    const activeTheme = sessionStorage.getItem("theme");
+    if (activeTheme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else if (activeTheme === "light") {
+      document.documentElement.classList.remove("dark");
+    } else {
+      const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+      if (systemDark) {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
+    }
+  }, []);
 
   const handleDownloadCard = async () => {
     const card = document.getElementById("profile-card");
     if (!card) return;
 
-    const dataUrl = await htmlToImage.toPng(card);
-    const link = document.createElement("a");
-    link.download = "profile-card.png";
-    link.href = dataUrl;
-    link.click();
+    const originalHeight = card.style.height;
+    const originalOverflow = card.style.overflow;
+
+    try {
+      card.style.height = "auto";
+      card.style.overflow = "visible";
+
+      const dataUrl = await htmlToImage.toPng(card, {
+        backgroundColor: "#111",
+        filter: (node: any) => {
+          if (node.classList && node.classList.contains("exclude-capture")) {
+            return false;
+          }
+          return true;
+        },
+      });
+      const link = document.createElement("a");
+      link.download = "profile-card.png";
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error("Failed to download profile card", err);
+    } finally {
+      card.style.height = originalHeight;
+      card.style.overflow = originalOverflow;
+    }
   };
 
   const handleNativeShare = async () => {
     const card = document.getElementById("profile-card");
     if (!card) return;
 
-    const blob = await htmlToImage.toBlob(card);
-    if (!blob) {
-      console.error("Failed to generate image blob.");
-      return;
-    }
+    const originalHeight = card.style.height;
+    const originalOverflow = card.style.overflow;
 
-    const shareData = {
-      files: [new File([blob], "profile-card.png", { type: "image/png" })],
-      title: "My Coding Profile",
-    };
+    try {
+      card.style.height = "auto";
+      card.style.overflow = "visible";
 
-    if ('canShare' in navigator && navigator.canShare(shareData)) {
-      try {
-        await navigator.share(shareData);
-      } catch (error) {
-        console.error("Error sharing or share cancelled:", error);
+      const blob = await htmlToImage.toBlob(card, {
+        backgroundColor: "#111",
+        filter: (node: any) => {
+          if (node.classList && node.classList.contains("exclude-capture")) {
+            return false;
+          }
+          return true;
+        },
+      });
+      if (!blob) {
+        console.error("Failed to generate image blob.");
+        return;
       }
-    } else {
-      alert("Sharing not supported on this device.");
+
+      const shareData = {
+        files: [new File([blob], "profile-card.png", { type: "image/png" })],
+        title: "My Coding Profile",
+      };
+
+      if ('canShare' in navigator && navigator.canShare(shareData)) {
+        try {
+          await navigator.share(shareData);
+        } catch (error) {
+          console.error("Error sharing or share cancelled:", error);
+        }
+      } else {
+        alert("Sharing not supported on this device.");
+      }
+    } catch (err) {
+      console.error("Failed to share profile card", err);
+    } finally {
+      card.style.height = originalHeight;
+      card.style.overflow = originalOverflow;
     }
   };
 
@@ -927,6 +1008,20 @@ export const CodingDashboard: React.FC<CodingDashboardProps> = ({
                     if (readOnly) {
                       redirectToSignup();
                     } else {
+                      router.push("/calender");
+                    }
+                    setIsSidebarOpen(false);
+                  }}
+                >
+                  <Calendar className="h-4 w-4" />
+                  Calender
+                </button>
+                <button
+                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-zinc-600 dark:text-zinc-400 transition hover:bg-white/70 dark:hover:bg-zinc-900/60 hover:text-zinc-900 dark:hover:text-zinc-100"
+                  onClick={() => {
+                    if (readOnly) {
+                      redirectToSignup();
+                    } else {
                       router.push("/");
                     }
                     setIsSidebarOpen(false);
@@ -986,15 +1081,102 @@ export const CodingDashboard: React.FC<CodingDashboardProps> = ({
                   </h1>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  {publicProfilePath && !readOnly ? (
-                    <Button
-                      variant="outline"
-                      className="gap-2 rounded-xl border-zinc-300 dark:border-zinc-700 bg-white/80 dark:bg-zinc-900/70 text-zinc-800 dark:text-zinc-100 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-                      onClick={() => window.open(publicProfilePath, "_blank", "noopener,noreferrer")}
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      Public Profile
-                    </Button>
+                  {!readOnly ? (
+                    <div className="relative" id="profile-dropdown-container">
+                      <div
+                        onClick={() => setIsProfileDropdownOpen(!isProfileDropdownOpen)}
+                        className="flex items-center gap-2.5 rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white/80 dark:bg-zinc-900/70 hover:bg-zinc-100 dark:hover:bg-zinc-800 px-3.5 py-1.5 cursor-pointer transition select-none shadow-sm"
+                      >
+                        {/* Circular Avatar Container */}
+                        <div className="relative h-7 w-7 rounded-full overflow-hidden border border-zinc-200 dark:border-zinc-700 bg-zinc-150 dark:bg-zinc-800 flex items-center justify-center shrink-0">
+                          {(() => {
+                            let avatarUrl = "";
+                            if (stats?.profile?.about) {
+                              try {
+                                const parsed = JSON.parse(stats.profile.about);
+                                avatarUrl = parsed.avatar_url || "";
+                              } catch (e) {}
+                            }
+                            if (avatarUrl) {
+                              return (
+                                <img
+                                  src={avatarUrl}
+                                  alt="Avatar"
+                                  className="h-full w-full object-cover"
+                                  onError={(e) => {
+                                    (e.target as HTMLElement).style.display = "none";
+                                  }}
+                                />
+                              );
+                            }
+                            return <UserRound className="h-4 w-4 text-zinc-500" />;
+                          })()}
+                        </div>
+                        <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200 max-w-[120px] truncate">
+                          {stats?.profile?.username || "Developer"}
+                        </span>
+                        <ChevronDown className={`h-4 w-4 text-zinc-500 transition-transform duration-200 ${isProfileDropdownOpen ? "rotate-180" : ""}`} />
+                      </div>
+
+                      {/* Dropdown Menu */}
+                      {isProfileDropdownOpen && (
+                        <div className="absolute right-0 top-full mt-2 w-48 rounded-xl border border-zinc-200/80 dark:border-zinc-800/80 bg-white dark:bg-zinc-950 p-1.5 shadow-lg z-50 flex flex-col gap-1">
+                          <button
+                            onClick={() => {
+                              setIsProfileDropdownOpen(false);
+                              router.push("/settings");
+                            }}
+                            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition font-medium"
+                          >
+                            <Settings className="h-4 w-4" />
+                            Settings
+                          </button>
+                          <button
+                            onClick={() => {
+                              setIsProfileDropdownOpen(false);
+                              router.push("/dashboard/links");
+                            }}
+                            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition font-medium"
+                          >
+                            <UserRoundCog className="h-4 w-4" />
+                            Manage Links
+                          </button>
+                          <button
+                            onClick={() => {
+                              setIsProfileDropdownOpen(false);
+                              setShowProfileCard(true);
+                            }}
+                            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition font-medium"
+                          >
+                            <Share2 className="h-4 w-4" />
+                            Profile Card
+                          </button>
+                          {publicProfilePath && (
+                            <button
+                              onClick={() => {
+                                setIsProfileDropdownOpen(false);
+                                window.open(publicProfilePath, "_blank", "noopener,noreferrer");
+                              }}
+                              className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition font-medium border-t border-zinc-100 dark:border-zinc-900 pt-2"
+                            >
+                              <UserRound className="h-4 w-4" />
+                              View Public Profile
+                            </button>
+                          )}
+                          <Separator className="my-1 bg-zinc-100 dark:bg-zinc-900" />
+                          <button
+                            onClick={() => {
+                              setIsProfileDropdownOpen(false);
+                              handleLogout();
+                            }}
+                            className="flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition font-semibold"
+                          >
+                            <LogOut className="h-4 w-4" />
+                            Logout
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   ) : null}
                   <Button
                     variant="outline"
@@ -1777,13 +1959,21 @@ export const CodingDashboard: React.FC<CodingDashboardProps> = ({
       </div>
 
       {showProfileCard && (
-        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
+        <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/70 backdrop-blur-sm p-4
+        ">
           <div
             id="profile-card"
-            className="relative w-[350px] rounded-2xl bg-[#111] text-white p-6 h-full overflow-auto shadow-2xl border border-zinc-700"
+            className="relative w-[350px] rounded-2xl bg-[#111] text-white p-6 h-full overflow-auto shadow-2xl border border-zinc-700 scrollbar-thin 
+                    [&::-webkit-scrollbar]:w-1.5
+                    [&::-webkit-scrollbar-track]:bg-transparent
+                    [&::-webkit-scrollbar-thumb]:rounded-full
+                    [&::-webkit-scrollbar-thumb]:bg-zinc-300
+                    dark:[&::-webkit-scrollbar-thumb]:bg-zinc-800
+                    hover:[&::-webkit-scrollbar-thumb]:bg-zinc-400
+                    dark:hover:[&::-webkit-scrollbar-thumb]:bg-zinc-700"
           >
             <button
-              className="absolute top-3 right-3 bg-white/10 p-2 rounded-full hover:bg-white/20"
+              className="absolute top-3 right-3 bg-white/10 p-2 rounded-full hover:bg-white/20 exclude-capture"
               onClick={() => setShowProfileCard(false)}
             >
               <X className="h-5 w-5" />
@@ -1848,14 +2038,14 @@ export const CodingDashboard: React.FC<CodingDashboardProps> = ({
                 <div className="flex items-center gap-2 rounded-lg bg-black/30 p-2">
                   <p className="min-w-0 flex-1 truncate text-xs text-zinc-200">{publicProfileUrl}</p>
                   <button
-                    className="rounded-md bg-white/10 p-2 transition hover:bg-white/20"
+                    className="rounded-md bg-white/10 p-2 transition hover:bg-white/20 exclude-capture"
                     onClick={() => handleCopyPublicUrl(publicProfileUrl)}
                     aria-label="Copy public profile URL"
                   >
                     {copiedProfileUrl ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                   </button>
                   <button
-                    className="rounded-md bg-white/10 p-2 transition hover:bg-white/20"
+                    className="rounded-md bg-white/10 p-2 transition hover:bg-white/20 exclude-capture"
                     onClick={() => window.open(publicProfileUrl, "_blank", "noopener,noreferrer")}
                     aria-label="Open public profile"
                   >
@@ -1865,7 +2055,7 @@ export const CodingDashboard: React.FC<CodingDashboardProps> = ({
               </div>
             ) : null}
 
-            <div className="mt-6 flex justify-between">
+            <div className="mt-6 flex justify-between exclude-capture">
               <Button
                 variant="secondary"
                 className="bg-white/20 text-white hover:bg-white/30"
